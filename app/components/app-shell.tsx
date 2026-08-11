@@ -6,7 +6,7 @@ import {
   Bell, BookOpen, BriefcaseBusiness, CalendarDays, ChevronDown, ChevronRight,
   CircleHelp, Clock3, FileText, FolderOpen, Grid2X2, Heart,
   Home, LayoutTemplate, Menu, MessageCircleMore, MoreHorizontal, Plus, Search,
-  Sparkles, Star, Users, WandSparkles, X, Check, Copy, Save, SlidersHorizontal,
+  Sparkles, Star, Users, WandSparkles, X, Check, Save, SlidersHorizontal,
   ClipboardCheck, ChartNoAxesColumnIncreasing, Armchair, UserRoundCog, PenLine, Lightbulb
 } from "lucide-react";
 import { MessageGenerator } from "./message-generator";
@@ -77,39 +77,6 @@ function EmptyState() {
   return <div className="empty"><span><FolderOpen size={25} /></span><b>아직 저장된 자료가 없어요</b><p>마음에 드는 결과물을 저장하면<br />이곳에서 다시 확인할 수 있어요.</p><button className="outline-btn"><Plus size={16} /> 새 자료 만들기</button></div>;
 }
 
-function ResultPreview({ title = "생성 결과 미리보기" }: { title?: string }) {
-  return <section className="preview-panel">
-    <div className="panel-head"><div><span className="eyebrow"><Sparkles size={13} /> AI 미리보기</span><h3>{title}</h3></div><button className="icon-button"><MoreHorizontal size={18} /></button></div>
-    <div className="paper">
-      <div className="paper-title">분수의 덧셈과 뺄셈</div><div className="paper-meta"><span>3학년 수학</span><span>40분</span><span>보통 수준</span></div>
-      <h4>오늘의 배움 목표</h4><p>분모가 같은 분수의 덧셈 원리를 이해하고, 생활 속 문제를 해결할 수 있다.</p>
-      <h4>수업 흐름</h4>
-      <div className="steps"><b>도입 <small>5분</small></b><p>피자 조각 그림을 보며 분수 덧셈 상황을 이야기해 봅니다.</p><b>활동 <small>25분</small></b><p>색종이 분수 막대를 활용해 계산 원리를 발견하고 짝과 설명합니다.</p><b>정리 <small>10분</small></b><p>오늘 알게 된 계산 방법을 배움 공책에 한 문장으로 정리합니다.</p></div>
-      <div className="tip"><Lightbulb size={17} /><span><b>수업 도움말</b>분수 막대가 없다면 색종이를 같은 크기로 접어 활용해 보세요.</span></div>
-    </div>
-    <div className="preview-actions"><button className="ghost-btn"><Copy size={16} /> 복사하기</button><button className="ghost-btn"><Save size={16} /> 저장하기</button><button className="primary-btn"><Sparkles size={16} /> 생성하기</button></div>
-  </section>;
-}
-
-function ToolForm({ type = "lesson" }: { type?: "lesson" | "message" }) {
-  return <section className="form-panel">
-    <div className="panel-head"><div><span className="eyebrow">STEP 1</span><h3>{type === "lesson" ? "수업 정보 입력" : "메시지 정보 입력"}</h3></div><span className="required">* 필수 항목</span></div>
-    {type === "lesson" ? <>
-      <div className="field-row"><label>학년<Select wide>3학년</Select></label><label>학기<Select wide>1학기</Select></label></div>
-      <div className="field-row"><label>교과<Select wide>수학</Select></label><label>단원<Select wide>6. 분수와 소수</Select></label></div>
-      <label>수업 주제<input defaultValue="분모가 같은 분수의 덧셈" /></label>
-    </> : <>
-      <div className="field-row"><label>메시지 유형<Select wide>안내</Select></label><label>말투<Select wide>따뜻하고 정중하게</Select></label></div>
-      <label>전달할 상황<textarea defaultValue="다음 주 금요일 현장체험학습 준비물과 등교 시간을 안내하고 싶어요." /></label>
-    </>}
-    <div className="divider" />
-    <span className="eyebrow">STEP 2</span><h3>옵션 설정</h3>
-    <label>학생 수준<div className="segmented"><button>기본</button><button className="active">보통</button><button>심화</button></div></label>
-    <label>내용 길이<div className="segmented"><button>간단</button><button className="active">보통</button><button>자세히</button></div></label>
-    <label className="switch-row"><span><b>교사 도움말 포함</b><small>수업 진행에 유용한 팁을 함께 제안해요.</small></span><span className="switch on"><i /></span></label>
-  </section>;
-}
-
 function Dashboard({ go }: { go: (href: string) => void }) {
   return <>
     <div className="welcome"><div><span className="date"><CalendarDays size={14} /> 2026년 8월 10일 월요일</span><h1>김다솜 선생님, 좋은 아침이에요 👋</h1><p>오늘도 다솜쌤과 함께 여유롭게 수업을 준비해 보세요.</p></div><div className="weather"><span>☀️</span><div><b>서울 28°C</b><small>쾌청한 하루예요</small></div></div></div>
@@ -139,10 +106,8 @@ function ToolsPage({ kind }: { kind: "operations" | "lessons" }) {
     <div className="tabs">{categories.map(c => <button className={category === c ? "active" : ""} onClick={() => setCategory(c)} key={c}>{c}</button>)}</div>
     <div className="tools-layout">
       <section className="tool-list-section"><div className="section-heading compact"><div><h2>{category === "전체" ? "전체 기능" : category}</h2><p>{visible.length}개의 도구가 있어요.</p></div><div className="view-toggle"><button className="active"><Grid2X2 size={16}/></button><button><Menu size={16}/></button></div></div><div className="tool-grid">{visible.map(t => <ToolCard key={t.title} tool={t} selected={selected.title === t.title} onClick={() => t === operationTools[0] ? window.location.assign("/messages") : setSelected(t)}/>)}</div></section>
-      <aside className="detail-card"><span className={`tool-icon large ${selected.color}`}><selected.icon size={26}/></span><span className="eyebrow">{selected.category}</span><h2>{selected.title}</h2><p>{selected.desc}. 선생님이 입력한 내용을 바탕으로 알맞은 초안을 제안합니다.</p><div className="detail-example"><b>이런 내용을 입력해요</b><ul><li><Check size={14}/> 대상 학년과 교과 정보</li><li><Check size={14}/> 전달하고 싶은 핵심 내용</li><li><Check size={14}/> 원하는 말투와 길이</li></ul></div><button className="primary-btn full" onClick={() => selected === operationTools[0] ? window.location.assign("/messages") : document.getElementById("builder")?.scrollIntoView({behavior:"smooth"})}><Sparkles size={16}/> 이 도구 사용하기</button></aside>
+      <aside className="detail-card"><span className={`tool-icon large ${selected.color}`}><selected.icon size={26}/></span><span className="eyebrow">{selected.category}</span><h2>{selected.title}</h2><p>{selected.desc}. 선생님이 입력한 내용을 바탕으로 알맞은 초안을 제안합니다.</p><div className="detail-example"><b>이런 내용을 입력해요</b><ul><li><Check size={14}/> 대상 학년과 교과 정보</li><li><Check size={14}/> 전달하고 싶은 핵심 내용</li><li><Check size={14}/> 원하는 말투와 길이</li></ul></div><button className="primary-btn full" disabled={selected !== operationTools[0]} onClick={() => window.location.assign("/messages")}><Sparkles size={16}/> {selected === operationTools[0] ? "이 도구 사용하기" : "준비 중"}</button></aside>
     </div>
-    <div id="builder" className="builder-head"><span className={`tool-icon ${selected.color}`}><selected.icon size={21}/></span><div><span className="eyebrow">도구 미리보기</span><h2>{selected.title}</h2></div></div>
-    <div className="builder"><ToolForm type={isLesson ? "lesson" : "message"}/><ResultPreview title={isLesson ? "생성 결과 미리보기" : "메시지 초안 미리보기"}/></div>
   </>;
 }
 
