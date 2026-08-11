@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { AlertCircle, Check, Copy, LoaderCircle, MessageCircleMore, RefreshCw, Send, Sparkles } from "lucide-react";
+import { Check, LoaderCircle, Sparkles } from "lucide-react";
 import {
   LENGTHS, MESSAGE_SITUATIONS, MESSAGE_TYPES, RECIPIENTS, TONES,
   validateMessageInput, type MessageGeneratorInput, type MessageType, type ValidationErrors,
 } from "../lib/message-generator";
+import { FieldError, GeneratorResult } from "./generator-result";
 
 const initialForm: MessageGeneratorInput = {
   messageType: "문의 답변",
@@ -19,17 +20,12 @@ const initialForm: MessageGeneratorInput = {
   length: "보통",
 };
 
-function FieldError({ message }: { message?: string }) {
-  return message ? <span className="field-error"><AlertCircle size={13} />{message}</span> : null;
-}
-
 export function MessageGenerator() {
   const [form, setForm] = useState<MessageGeneratorInput>(initialForm);
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [result, setResult] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState("");
-  const [copied, setCopied] = useState(false);
 
   const situations = MESSAGE_SITUATIONS[form.messageType];
   const needsDate = ["결석 문의", "지각", "준비물 미지참", "과제 미제출"].includes(form.situation);
@@ -53,7 +49,6 @@ export function MessageGenerator() {
     const validation = validateMessageInput(form);
     setErrors(validation.errors);
     setApiError("");
-    setCopied(false);
     if (!validation.data) return;
 
     setIsLoading(true);
@@ -73,17 +68,6 @@ export function MessageGenerator() {
       setApiError(error instanceof Error ? error.message : "메시지를 생성하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const copyResult = async () => {
-    if (!result) return;
-    try {
-      await navigator.clipboard.writeText(result);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setApiError("복사하지 못했습니다. 메시지를 직접 선택해 복사해 주세요.");
     }
   };
 
@@ -117,15 +101,7 @@ export function MessageGenerator() {
         <button type="button" className="primary-btn generate-message" onClick={generate} disabled={isLoading}>{isLoading ? <><LoaderCircle className="spin" size={17} /> 메시지를 작성하고 있어요</> : <><Sparkles size={17} /> 메시지 생성하기</>}</button>
       </section>
 
-      <section className="preview-panel message-result" aria-live="polite">
-        <div className="panel-head"><div><span className="eyebrow"><MessageCircleMore size={13} /> 생성 결과</span><h3>보낼 메시지</h3></div>{result && <span className="result-ready"><Check size={13} /> 수정 가능</span>}</div>
-        {apiError && <div className="api-error"><AlertCircle size={19} /><div><b>메시지를 생성하지 못했어요</b><p>{apiError}</p><span>입력 내용을 확인한 뒤 ‘다시 생성’을 눌러 주세요.</span></div></div>}
-        {result ? <>
-          <textarea className="editable-result" value={result} onChange={(event) => setResult(event.target.value)} aria-label="생성된 메시지 수정" />
-          <p className="edit-hint">내용을 확인하고 필요한 부분을 직접 수정한 뒤 사용해 주세요.</p>
-          <div className="preview-actions message-actions"><button className="ghost-btn" onClick={copyResult}>{copied ? <><Check size={16} /> 복사 완료</> : <><Copy size={16} /> 복사하기</>}</button><button className="primary-btn" onClick={generate} disabled={isLoading}>{isLoading ? <LoaderCircle className="spin" size={16} /> : <RefreshCw size={16} />} 다시 생성</button></div>
-        </> : <div className="message-empty"><span><Send size={28} /></span><b>아직 생성된 메시지가 없어요</b><p>왼쪽에서 상황과 전달할 내용을 입력한 뒤<br />메시지 생성 버튼을 눌러 주세요.</p><div><span>1</span>사실 확인<span>2</span>말투 선택<span>3</span>결과 수정</div></div>}
-      </section>
+      <GeneratorResult eyebrow="생성 결과" title="보낼 메시지" result={result} setResult={setResult} isLoading={isLoading} apiError={apiError} onRegenerate={generate} emptyTitle="아직 생성된 메시지가 없어요" emptyDescription={<>왼쪽에서 상황과 전달할 내용을 입력한 뒤<br />메시지 생성 버튼을 눌러 주세요.</>} editHint="내용을 확인하고 필요한 부분을 직접 수정한 뒤 사용해 주세요." resultAriaLabel="생성된 메시지 수정" />
     </div>
   </>;
 }

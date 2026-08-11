@@ -65,6 +65,39 @@ test("rejects an incomplete message request before calling AI", async () => {
   assert.ok(payload.fields.request);
 });
 
+test("renders the newsletter generator route", async () => {
+  const worker = await getWorker();
+  const response = await worker.fetch(
+    new Request("http://localhost/newsletters", { headers: { accept: "text/html" } }),
+    env,
+    context,
+  );
+
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /가정통신문 생성기/);
+  assert.match(html, /입력 내용은 저장하지 않아요/);
+});
+
+test("rejects an incomplete newsletter request before calling AI", async () => {
+  const worker = await getWorker();
+  const response = await worker.fetch(
+    new Request("http://localhost/api/newsletters/generate", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ type: "행사 안내", audience: "특정 학년" }),
+    }),
+    env,
+    context,
+  );
+
+  assert.equal(response.status, 400);
+  const payload = await response.json();
+  assert.equal(payload.error, "필수 입력값을 확인해 주세요.");
+  assert.ok(payload.fields.audienceDetail);
+  assert.ok(payload.fields.coreContent);
+});
+
 test("keeps message privacy and writing rules in the server service", async () => {
   const [service, rules, route] = await Promise.all([
     readFile(new URL("../app/lib/ai-service.ts", import.meta.url), "utf8"),
@@ -80,4 +113,17 @@ test("keeps message privacy and writing rules in the server service", async () =
   assert.match(rules, /다른 학생의 이름이나 정보를 포함하지 마세요/);
   assert.match(rules, /2~3문장/);
   assert.match(rules, /5~7문장/);
+});
+
+test("keeps newsletter facts and personal details out of storage and logs", async () => {
+  const [rules, route] = await Promise.all([
+    readFile(new URL("../app/lib/newsletter-generator.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/newsletters/generate/route.ts", import.meta.url), "utf8"),
+  ]);
+
+  assert.doesNotMatch(route, /console\.(log|info|debug)/);
+  assert.match(rules, /입력된 사실만 사용/);
+  assert.match(rules, /요일/);
+  assert.match(rules, /입력되지 않은 정보를 추가하지 마세요/);
+  assert.match(rules, /완성된 가정통신문만 반환하세요/);
 });
