@@ -1,15 +1,17 @@
+/* eslint-disable @next/next/no-html-link-for-pages */
 "use client";
 
 import { useState } from "react";
 import {
   Bell, BookOpen, BriefcaseBusiness, CalendarDays, ChevronDown, ChevronRight,
-  CircleHelp, Clock3, FileText, FolderOpen, GraduationCap, Grid2X2, Heart,
+  CircleHelp, Clock3, FileText, FolderOpen, Grid2X2, Heart,
   Home, LayoutTemplate, Menu, MessageCircleMore, MoreHorizontal, Plus, Search,
-  Settings, Sparkles, Star, Users, WandSparkles, X, Check, Copy, Save, SlidersHorizontal,
+  Sparkles, Star, Users, WandSparkles, X, Check, Copy, Save, SlidersHorizontal,
   ClipboardCheck, ChartNoAxesColumnIncreasing, Armchair, UserRoundCog, PenLine, Lightbulb
 } from "lucide-react";
+import { MessageGenerator } from "./message-generator";
 
-type Section = "dashboard" | "operations" | "lessons" | "templates" | "workspace" | "help";
+type Section = "dashboard" | "operations" | "lessons" | "templates" | "workspace" | "help" | "messages";
 type Tool = { title: string; desc: string; category: string; icon: React.ElementType; color: string; badge?: string };
 
 const nav = [
@@ -116,7 +118,7 @@ function Dashboard({ go }: { go: (href: string) => void }) {
       <button className="hero-card green" onClick={() => go("/lessons")}><span className="hero-icon"><BookOpen /></span><span><small>수업 준비를 더 알차게</small><b>수업 도우미</b><em>지도안부터 평가까지 한 번에 준비해요 <ChevronRight size={17} /></em></span><span className="orb" /></button>
     </section>
     <div className="section-heading"><div><h2>오늘의 바로가기</h2><p>자주 사용하는 기능을 빠르게 시작하세요.</p></div><button className="text-btn">전체 기능 보기 <ChevronRight size={15} /></button></div>
-    <div className="quick-grid">{[operationTools[0], lessonTools[0], lessonTools[1], lessonTools[2]].map((t, i) => <button className="quick-card" key={t.title} onClick={() => go(i === 0 ? "/operations" : "/lessons")}><span className={`tool-icon ${t.color}`}><t.icon size={22} /></span><span><b>{t.title}</b><small>{t.desc}</small></span><Plus size={17} /></button>)}</div>
+    <div className="quick-grid">{[operationTools[0], lessonTools[0], lessonTools[1], lessonTools[2]].map((t, i) => <button className="quick-card" key={t.title} onClick={() => go(i === 0 ? "/messages" : "/lessons")}><span className={`tool-icon ${t.color}`}><t.icon size={22} /></span><span><b>{t.title}</b><small>{t.desc}</small></span><Plus size={17} /></button>)}</div>
     <div className="dashboard-grid">
       <section className="card"><div className="card-head"><div><h2>최근 작업</h2><p>이어서 작업하거나 다시 활용해 보세요.</p></div><button className="text-btn">모두 보기</button></div><div className="recent-list">{recent.slice(0,3).map((r,i) => <button key={r[0]}><span className={`file-icon f${i}`}><FileText size={18} /></span><span><b>{r[0]}</b><small>{r[1]} · {r[2]}</small></span><span className="subject-badge">{r[3]}</span><MoreHorizontal size={18} /></button>)}</div></section>
       <section className="card recommendation"><div className="card-head"><div><span className="eyebrow"><Sparkles size={13} /> 선생님을 위한 추천</span><h2>새 학기 자리배치,<br />고민 없이 시작해 보세요</h2></div></div><p>학생의 성향과 관계를 고려해<br />균형 잡힌 자리를 제안해 드려요.</p><button className="primary-btn" onClick={() => go("/operations")}>자리배치 시작하기 <ChevronRight size={16} /></button><span className="seat-art"><i /><i /><i /><i /><i /><i /></span></section>
@@ -137,7 +139,7 @@ function ToolsPage({ kind }: { kind: "operations" | "lessons" }) {
     <div className="tabs">{categories.map(c => <button className={category === c ? "active" : ""} onClick={() => setCategory(c)} key={c}>{c}</button>)}</div>
     <div className="tools-layout">
       <section className="tool-list-section"><div className="section-heading compact"><div><h2>{category === "전체" ? "전체 기능" : category}</h2><p>{visible.length}개의 도구가 있어요.</p></div><div className="view-toggle"><button className="active"><Grid2X2 size={16}/></button><button><Menu size={16}/></button></div></div><div className="tool-grid">{visible.map(t => <ToolCard key={t.title} tool={t} selected={selected.title === t.title} onClick={() => setSelected(t)}/>)}</div></section>
-      <aside className="detail-card"><span className={`tool-icon large ${selected.color}`}><selected.icon size={26}/></span><span className="eyebrow">{selected.category}</span><h2>{selected.title}</h2><p>{selected.desc}. 선생님이 입력한 내용을 바탕으로 알맞은 초안을 제안합니다.</p><div className="detail-example"><b>이런 내용을 입력해요</b><ul><li><Check size={14}/> 대상 학년과 교과 정보</li><li><Check size={14}/> 전달하고 싶은 핵심 내용</li><li><Check size={14}/> 원하는 말투와 길이</li></ul></div><button className="primary-btn full" onClick={() => document.getElementById("builder")?.scrollIntoView({behavior:"smooth"})}><Sparkles size={16}/> 이 도구 사용하기</button></aside>
+      <aside className="detail-card"><span className={`tool-icon large ${selected.color}`}><selected.icon size={26}/></span><span className="eyebrow">{selected.category}</span><h2>{selected.title}</h2><p>{selected.desc}. 선생님이 입력한 내용을 바탕으로 알맞은 초안을 제안합니다.</p><div className="detail-example"><b>이런 내용을 입력해요</b><ul><li><Check size={14}/> 대상 학년과 교과 정보</li><li><Check size={14}/> 전달하고 싶은 핵심 내용</li><li><Check size={14}/> 원하는 말투와 길이</li></ul></div><button className="primary-btn full" onClick={() => selected === operationTools[0] ? window.location.assign("/messages") : document.getElementById("builder")?.scrollIntoView({behavior:"smooth"})}><Sparkles size={16}/> 이 도구 사용하기</button></aside>
     </div>
     <div id="builder" className="builder-head"><span className={`tool-icon ${selected.color}`}><selected.icon size={21}/></span><div><span className="eyebrow">도구 미리보기</span><h2>{selected.title}</h2></div></div>
     <div className="builder"><ToolForm type={isLesson ? "lesson" : "message"}/><ResultPreview title={isLesson ? "생성 결과 미리보기" : "메시지 초안 미리보기"}/></div>
@@ -168,13 +170,13 @@ function HelpPage() {
 }
 
 export function AppShell({ section: raw }: { section: string }) {
-  const section: Section = (["dashboard","operations","lessons","templates","workspace","help"] as string[]).includes(raw) ? raw as Section : "dashboard";
+  const section: Section = (["dashboard","operations","lessons","templates","workspace","help","messages"] as string[]).includes(raw) ? raw as Section : "dashboard";
   const [mobile, setMobile] = useState(false); const [notice, setNotice] = useState(false);
   const go = (href:string) => { window.location.href = href; };
   return <div className="app-shell">
-    <aside className={`sidebar ${mobile ? "open" : ""}`}><div className="brand"><span className="logo-mark"><Sparkles size={21}/></span><span><b>다솜쌤</b><small>AI 교사 도우미</small></span><button onClick={()=>setMobile(false)} className="mobile-close"><X/></button></div><nav>{nav.map(n=><a key={n.id} href={n.href} className={section===n.id?"active":""}><n.icon size={19}/><span>{n.label}</span>{n.id==="lessons"&&<em>NEW</em>}</a>)}</nav><div className="side-bottom"><a href="/help" className={section==="help"?"active":""}><CircleHelp size={19}/>설정·도움말</a><div className="support"><span><Sparkles size={17}/></span><b>무엇을 도와드릴까요?</b><p>사용 중 궁금한 점을<br/>편하게 알려주세요.</p><button>도움말 보기</button></div><div className="profile"><span>김</span><div><b>김다솜 선생님</b><small>서울푸른초등학교</small></div><MoreHorizontal size={18}/></div></div></aside>
+    <aside className={`sidebar ${mobile ? "open" : ""}`}><div className="brand"><span className="logo-mark"><Sparkles size={21}/></span><span><b>다솜쌤</b><small>AI 교사 도우미</small></span><button onClick={()=>setMobile(false)} className="mobile-close"><X/></button></div><nav>{nav.map(n=><a key={n.id} href={n.href} className={section===n.id || (section==="messages" && n.id==="operations")?"active":""}><n.icon size={19}/><span>{n.label}</span>{n.id==="lessons"&&<em>NEW</em>}</a>)}</nav><div className="side-bottom"><a href="/help" className={section==="help"?"active":""}><CircleHelp size={19}/>설정·도움말</a><div className="support"><span><Sparkles size={17}/></span><b>무엇을 도와드릴까요?</b><p>사용 중 궁금한 점을<br/>편하게 알려주세요.</p><button>도움말 보기</button></div><div className="profile"><span>김</span><div><b>김다솜 선생님</b><small>서울푸른초등학교</small></div><MoreHorizontal size={18}/></div></div></aside>
     <div className="main-wrap"><header><button className="menu-button" onClick={()=>setMobile(true)}><Menu/></button><div className="global-search"><Search size={18}/><input placeholder="기능이나 자료를 검색해 보세요"/><kbd>⌘ K</kbd></div><div className="header-actions"><button className="icon-button" onClick={()=>setNotice(!notice)}><Bell size={19}/><i/></button><span className="header-divider"/><button className="school"><span>3-2</span><div><small>현재 학급</small><b>3학년 2반</b></div><ChevronDown size={15}/></button></div>{notice&&<div className="notice-pop"><b>알림</b><button onClick={()=>setNotice(false)}><X size={15}/></button><p>새로운 수업 도우미 기능이 추가되었어요.</p><small>방금 전</small></div>}</header>
-      <main>{section==="dashboard"&&<Dashboard go={go}/>} {section==="operations"&&<ToolsPage kind="operations"/>}{section==="lessons"&&<ToolsPage kind="lessons"/>}{section==="templates"&&<TemplatesPage/>}{section==="workspace"&&<WorkspacePage/>}{section==="help"&&<HelpPage/>}</main>
+      <main>{section==="dashboard"&&<Dashboard go={go}/>} {section==="operations"&&<ToolsPage kind="operations"/>}{section==="lessons"&&<ToolsPage kind="lessons"/>}{section==="templates"&&<TemplatesPage/>}{section==="workspace"&&<WorkspacePage/>}{section==="help"&&<HelpPage/>}{section==="messages"&&<MessageGenerator/>}</main>
     </div>{mobile&&<button className="overlay" onClick={()=>setMobile(false)} aria-label="메뉴 닫기"/>}
   </div>;
 }
