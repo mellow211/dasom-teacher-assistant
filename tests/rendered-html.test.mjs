@@ -177,3 +177,60 @@ test("uses Gemini structured output and keeps lesson data out of logs", async ()
   assert.match(rules, /시간 합계는 반드시/);
   assert.match(rules, /성취기준을 바꾸거나 새로 만들지 마세요/);
 });
+
+test("renders the student observation organizer route with privacy guidance", async () => {
+  const worker = await getWorker();
+  const response = await worker.fetch(new Request("http://localhost/student-observations", { headers: { accept: "text/html" } }), env, context);
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /학생 관찰 메모 정리기/);
+  assert.match(html, /민감한 개인정보, 건강정보, 가족정보는 입력하지 마세요/);
+  assert.match(html, /새로고침하면 삭제됩니다/);
+});
+
+test("validates observation memo required values and sorts dates", async () => {
+  const { validateObservationMemo, sortMemosByDate } = await import("../app/lib/student-observation-organizer.ts");
+  const invalid = validateObservationMemo({ studentIdentifier:"", date:"", category:"학습 태도", memo:"" });
+  assert.ok(invalid.errors.studentIdentifier);
+  assert.ok(invalid.errors.date);
+  assert.ok(invalid.errors.memo);
+  const memos = [
+    {id:"2",studentIdentifier:"12번",date:"2026-08-11",category:"책임감",memo:"두 번째"},
+    {id:"1",studentIdentifier:"12번",date:"2026-08-01",category:"학습 태도",memo:"첫 번째"},
+  ];
+  assert.deepEqual(sortMemosByDate(memos).map(x=>x.id), ["1","2"]);
+  assert.deepEqual(sortMemosByDate(memos,true).map(x=>x.id), ["2","1"]);
+});
+
+test("separates student records before building the AI request", async () => {
+  const { selectStudentMemos, buildObservationPrompt } = await import("../app/lib/student-observation-organizer.ts");
+  const memos = [
+    {id:"a",studentIdentifier:"A",date:"2026-08-01",category:"학습 태도",memo:"A의 기록"},
+    {id:"b",studentIdentifier:"B",date:"2026-08-02",category:"교우 관계",memo:"B만의 비공개 기록"},
+  ];
+  const selected = selectStudentMemos(memos,"A");
+  assert.equal(selected.length,1);
+  const prompt = buildObservationPrompt("A",selected,"두 결과 모두 생성");
+  assert.match(prompt,/A의 기록/);
+  assert.doesNotMatch(prompt,/B만의 비공개 기록/);
+});
+
+test("validates structured observation output against source dates and categories", async () => {
+  const { validateObservationOutput } = await import("../app/lib/student-observation-organizer.ts");
+  const memos=[{id:"a",studentIdentifier:"A",date:"2026-08-01",category:"학습 태도",memo:"활동지를 끝까지 작성함"}];
+  const output={studentIdentifier:"A",organizedRecords:[{date:"2026-08-01",category:"학습 태도",situation:"",objectiveObservation:"활동지를 끝까지 작성함.",teacherSupport:"",subsequentChange:""}],repeatedStrengths:[],growthPoints:[],behaviorCharacteristicsDraft:"",insufficientEvidenceNotice:"관찰 자료가 충분하지 않아 학생의 전반적인 특성을 판단하기 어려울 수 있습니다."};
+  assert.ok(validateObservationOutput(output,memos,"상담·관찰 기록"));
+  output.organizedRecords[0].date="2026-08-02";
+  assert.equal(validateObservationOutput(output,memos,"상담·관찰 기록"),null);
+});
+
+test("keeps observation content out of storage and logs", async () => {
+  const [rules,route,component] = await Promise.all([
+    readFile(new URL("../app/lib/student-observation-organizer.ts", import.meta.url),"utf8"),
+    readFile(new URL("../app/api/student-observations/generate/route.ts", import.meta.url),"utf8"),
+    readFile(new URL("../app/components/student-observation-organizer.tsx", import.meta.url),"utf8"),
+  ]);
+  assert.doesNotMatch(rules+route+component,/localStorage|sessionStorage|console\.(log|info|debug)/);
+  assert.match(rules,/다른 학생의 이름은 '다른 학생' 또는 '친구'로 익명화/);
+  assert.match(route,/선택한 학생의 메모만 전송/);
+});

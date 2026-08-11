@@ -73,12 +73,12 @@ export async function generateStructuredAiData<T>(
     );
 
     const text = interaction.output_text?.trim();
-    if (!text) throw new AiServiceError("생성된 지도안이 비어 있습니다. 다시 시도해 주세요.", 502);
+    if (!text) throw new AiServiceError("생성된 결과가 비어 있습니다. 다시 시도해 주세요.", 502);
     let parsed: unknown;
     try { parsed = JSON.parse(text); }
-    catch { throw new AiServiceError("지도안 응답 형식을 확인할 수 없습니다. 다시 생성해 주세요.", 502); }
+    catch { throw new AiServiceError("AI 응답 형식을 확인할 수 없습니다. 다시 생성해 주세요.", 502); }
     const validated = validate(parsed);
-    if (!validated) throw new AiServiceError("지도안의 구성이나 수업 시간이 올바르지 않습니다. 다시 생성해 주세요.", 502);
+    if (!validated) throw new AiServiceError("생성 결과의 구성이 올바르지 않습니다. 다시 생성해 주세요.", 502);
     return validated;
   } catch (error) {
     throw normalizeAiError(error);
