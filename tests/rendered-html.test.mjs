@@ -246,3 +246,35 @@ test("requires an authenticated teacher for stored observation memos", async () 
   const payload=await response.json();
   assert.match(payload.error,/로그인/);
 });
+
+test("renders the writing feedback assistant route", async()=>{
+  const worker=await getWorker();
+  const response=await worker.fetch(new Request("http://localhost/writing-feedback",{headers:{accept:"text/html"}}),env,context);
+  assert.equal(response.status,200);const html=await response.text();
+  assert.match(html,/글쓰기 피드백 도우미/);
+  assert.match(html,/학생 이름, 연락처, 건강정보, 가족정보/);
+  assert.match(html,/학생 글과 결과는 저장하지 않아요/);
+});
+
+test("validates required writing feedback inputs",async()=>{
+  const {validateWritingFeedbackInput}=await import("../app/lib/writing-feedback.ts");
+  const validation=validateWritingFeedbackInput({grade:"",writingType:"",studentText:"",feedbackAreas:[],detail:"보통"});
+  assert.equal(validation.data,undefined);assert.ok(validation.errors.grade);assert.ok(validation.errors.writingType);assert.ok(validation.errors.studentText);assert.ok(validation.errors.feedbackAreas);
+});
+
+test("validates selected feedback areas and spelling correction data",async()=>{
+  const {validateWritingFeedbackOutput}=await import("../app/lib/writing-feedback.ts");
+  const input={grade:"3학년",writingType:"생활문",studentText:"오늘 공원에 갔다.",feedbackAreas:["내용","맞춤법·띄어쓰기"],detail:"보통"};
+  const output={overallFeedback:{strengths:"경험이 분명해요.",prioritySuggestion:"구체적인 모습을 더 떠올려 보세요."},contentFeedback:{strengths:["주제가 드러나요."],suggestions:["공원에서 한 일을 더 써 보세요."],guidingQuestions:["공원에서 무엇을 보았나요?"]},organizationFeedback:{strengths:[],suggestions:[]},expressionFeedback:{strengths:[],revisions:[]},spellingFeedback:{corrections:[{original:"갔다",corrected:"갔다",reason:"이 표현은 바르게 썼어요."}]},revisionChecklist:["주제가 잘 드러나는지 확인하기","고친 문장을 다시 읽기"]};
+  assert.ok(validateWritingFeedbackOutput(output,input));output.organizationFeedback.strengths=["잘함"];
+  assert.equal(validateWritingFeedbackOutput(output,input),null);
+  output.organizationFeedback.strengths=[];output.spellingFeedback.corrections=[{original:"",corrected:"갔다",reason:"설명"}];
+  assert.equal(validateWritingFeedbackOutput(output,input),null);
+});
+
+test("keeps student writing out of storage and logs",async()=>{
+  const [rules,route,component]=await Promise.all([readFile(new URL("../app/lib/writing-feedback.ts",import.meta.url),"utf8"),readFile(new URL("../app/api/writing-feedback/generate/route.ts",import.meta.url),"utf8"),readFile(new URL("../app/components/writing-feedback-assistant.tsx",import.meta.url),"utf8")]);
+  assert.doesNotMatch(rules+route+component,/localStorage|sessionStorage|console\.(log|info|debug)|observation-store/);
+  assert.match(rules,/학생 대신 글 전체를 다시 쓰지 마세요/);
+  assert.match(rules,/실제 오류만 제시/);
+});
