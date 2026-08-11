@@ -127,3 +127,53 @@ test("keeps newsletter facts and personal details out of storage and logs", asyn
   assert.match(rules, /입력되지 않은 정보를 추가하지 마세요/);
   assert.match(rules, /완성된 가정통신문만 반환하세요/);
 });
+
+test("renders the lesson plan generator route", async () => {
+  const worker = await getWorker();
+  const response = await worker.fetch(new Request("http://localhost/lesson-plans", { headers: { accept: "text/html" } }), env, context);
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /지도안 생성기/);
+  assert.match(html, /민감한 개인정보는 입력하지 마세요/);
+});
+
+test("validates lesson sessions and positive duration", async () => {
+  const { validateLessonPlanInput } = await import("../app/lib/lesson-plan-generator.ts");
+  const base = { grade:"3학년", subject:"국어", topic:"중심 생각", achievementStandard:"[4국02-01] 문단과 글의 중심 생각을 파악한다.", currentSession:3, totalSessions:2, durationMinutes:0, studentLevel:"보통" };
+  const validation = validateLessonPlanInput(base);
+  assert.equal(validation.data, undefined);
+  assert.match(validation.errors.currentSession, /전체 차시보다 클 수 없어요/);
+  assert.match(validation.errors.durationMinutes, /1분 이상의 정수/);
+});
+
+test("validates lesson plan structure, stage order, time sum, and mixed-level support", async () => {
+  const { validateLessonPlanOutput } = await import("../app/lib/lesson-plan-generator.ts");
+  const input = { grade:"3학년", subject:"국어", topic:"중심 생각", achievementStandard:"[4국02-01] 문단과 글의 중심 생각을 파악한다.", currentSession:1, totalSessions:2, durationMinutes:40, studentLevel:"수준 혼합" };
+  const plan = {
+    title:"중심 생각을 찾는 수업", learningObjectives:["글의 중심 생각을 찾을 수 있다."], teacherMaterials:["칠판"], studentMaterials:["필기도구"],
+    lessonStages:[
+      {stage:"도입",minutes:5,teacherActivities:["질문 제시"],studentActivities:["생각 나누기"],materialsAndNotes:["참여 관찰"]},
+      {stage:"전개",minutes:25,teacherActivities:["활동 안내"],studentActivities:["글 읽고 중심 생각 찾기"],materialsAndNotes:["개별 지원"]},
+      {stage:"정리",minutes:10,teacherActivities:["정리 질문"],studentActivities:["배운 점 말하기"],materialsAndNotes:["형성평가"]},
+    ],
+    assessment:{content:["중심 생각 파악"],method:["관찰"],observableBehaviors:["근거를 들어 중심 생각을 말한다."]},
+    levelSupport:[{level:"기초",support:["문장 틀 제공"]},{level:"보통",support:["기본 활동"]},{level:"심화",support:["근거 비교"]}],
+  };
+  assert.ok(validateLessonPlanOutput(plan,input));
+  plan.lessonStages[1].minutes = 24;
+  assert.equal(validateLessonPlanOutput(plan,input), null);
+});
+
+test("uses Gemini structured output and keeps lesson data out of logs", async () => {
+  const [service, rules, route] = await Promise.all([
+    readFile(new URL("../app/lib/ai-service.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/lesson-plan-generator.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/lesson-plans/generate/route.ts", import.meta.url), "utf8"),
+  ]);
+  assert.match(service, /response_format/);
+  assert.match(service, /application\/json/);
+  assert.match(service, /JSON\.parse/);
+  assert.doesNotMatch(service + route, /console\.(log|info|debug)/);
+  assert.match(rules, /시간 합계는 반드시/);
+  assert.match(rules, /성취기준을 바꾸거나 새로 만들지 마세요/);
+});
