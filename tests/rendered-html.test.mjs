@@ -72,7 +72,8 @@ test("keeps message privacy and writing rules in the server service", async () =
     readFile(new URL("../app/api/messages/generate/route.ts", import.meta.url), "utf8"),
   ]);
 
-  assert.match(service, /process\.env\.OPENAI_API_KEY/);
+  assert.match(service, /process\.env\.GEMINI_API_KEY/);
+  assert.match(service, /new GoogleGenAI/);
   assert.match(service, /store:\s*false/);
   assert.doesNotMatch(service + route, /console\.(log|info|debug)/);
   assert.match(rules, /입력된 사실만 사용/);
