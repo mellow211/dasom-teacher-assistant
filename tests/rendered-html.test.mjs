@@ -185,7 +185,7 @@ test("renders the student observation organizer route with privacy guidance", as
   const html = await response.text();
   assert.match(html, /학생 관찰 메모 정리기/);
   assert.match(html, /민감한 개인정보, 건강정보, 가족정보는 입력하지 마세요/);
-  assert.match(html, /새로고침하면 삭제됩니다/);
+  assert.match(html, /로그인한 교사 본인만 조회·수정·삭제/);
 });
 
 test("validates observation memo required values and sorts dates", async () => {
@@ -225,12 +225,24 @@ test("validates structured observation output against source dates and categorie
 });
 
 test("keeps observation content out of storage and logs", async () => {
-  const [rules,route,component] = await Promise.all([
+  const [rules,route,component,store] = await Promise.all([
     readFile(new URL("../app/lib/student-observation-organizer.ts", import.meta.url),"utf8"),
     readFile(new URL("../app/api/student-observations/generate/route.ts", import.meta.url),"utf8"),
     readFile(new URL("../app/components/student-observation-organizer.tsx", import.meta.url),"utf8"),
+    readFile(new URL("../app/lib/observation-store.ts", import.meta.url),"utf8"),
   ]);
-  assert.doesNotMatch(rules+route+component,/localStorage|sessionStorage|console\.(log|info|debug)/);
+  assert.doesNotMatch(rules+route+component+store,/localStorage|sessionStorage|console\.(log|info|debug)/);
   assert.match(rules,/다른 학생의 이름은 '다른 학생' 또는 '친구'로 익명화/);
   assert.match(route,/선택한 학생의 메모만 전송/);
+  assert.match(store,/SUPABASE_OWNER_SECRET/);
+  assert.match(store,/HMAC/);
+  assert.doesNotMatch(store,/NEXT_PUBLIC_/);
+});
+
+test("requires an authenticated teacher for stored observation memos", async () => {
+  const worker=await getWorker();
+  const response=await worker.fetch(new Request("http://localhost/api/student-observations"),env,context);
+  assert.equal(response.status,401);
+  const payload=await response.json();
+  assert.match(payload.error,/로그인/);
 });
