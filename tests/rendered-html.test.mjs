@@ -117,7 +117,7 @@ test("renders the attendance and assignment manager route", async () => {
 
 test("renders the one-student-one-role assignment route", async () => {
   const worker = await getWorker();
-  const response = await worker.fetch(new Request("http://localhost/class-roles", { headers: { accept: "text/html" } }), env, context);
+  const response = await worker.fetch(new Request("http://localhost/class-roles", { headers: { accept: "text/html", "oai-authenticated-user-email": "teacher@example.com" } }), env, context);
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /학급과 역할 정보를 불러오는 중입니다/);
@@ -125,7 +125,7 @@ test("renders the one-student-one-role assignment route", async () => {
 
 test("renders the shared class and student management route", async () => {
   const worker = await getWorker();
-  const response = await worker.fetch(new Request("http://localhost/class-management", { headers: { accept: "text/html" } }), env, context);
+  const response = await worker.fetch(new Request("http://localhost/class-management", { headers: { accept: "text/html", "oai-authenticated-user-email": "teacher@example.com" } }), env, context);
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /학급과 학생 정보를 불러오는 중입니다/);
@@ -280,12 +280,19 @@ test("uses Gemini structured output and keeps lesson data out of logs", async ()
 
 test("renders the student observation organizer route with privacy guidance", async () => {
   const worker = await getWorker();
-  const response = await worker.fetch(new Request("http://localhost/student-observations", { headers: { accept: "text/html" } }), env, context);
+  const response = await worker.fetch(new Request("http://localhost/student-observations", { headers: { accept: "text/html", "oai-authenticated-user-email": "teacher@example.com" } }), env, context);
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /상담·학생 관찰 기록 정리기/);
   assert.match(html, /민감한 개인정보, 건강정보, 가족정보는 입력하지 마세요/);
   assert.match(html, /로그인한 교사 본인만 조회·수정·삭제/);
+});
+
+test("redirects an unauthenticated observation viewer to ChatGPT sign in", async () => {
+  const worker = await getWorker();
+  const response = await worker.fetch(new Request("http://localhost/student-observations", { headers: { accept: "text/html" }, redirect: "manual" }), env, context);
+  assert.ok([302,307,308].includes(response.status));
+  assert.match(response.headers.get("location")||"", /signin-with-chatgpt/);
 });
 
 test("validates observation memo required values and sorts dates", async () => {
