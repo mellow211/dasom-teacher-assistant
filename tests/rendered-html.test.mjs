@@ -106,6 +106,15 @@ test("renders the teacher assistant dashboard", async () => {
   assert.match(html, /다솜쌤/);
 });
 
+test("renders the attendance and assignment manager route", async () => {
+  const worker = await getWorker();
+  const response = await worker.fetch(new Request("http://localhost/attendance-assignments", { headers: { accept: "text/html", "oai-authenticated-user-email": "teacher@example.com" } }), env, context);
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /출결·과제 제출 현황/);
+  assert.match(html, /학급 정보를 안전하게 불러오는 중입니다/);
+});
+
 test("renders the message generator route", async () => {
   const worker = await getWorker();
   const response = await worker.fetch(
