@@ -9,6 +9,30 @@ async function getMultiplicationLogic() {
   return import(`data:text/javascript;base64,${Buffer.from(javascript).toString("base64")}`);
 }
 
+async function getAttendanceLogic() {
+  const source = await readFile(new URL("../app/lib/attendance-assignment.ts", import.meta.url), "utf8");
+  const javascript = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
+  return import(`data:text/javascript;base64,${Buffer.from(javascript).toString("base64")}`);
+}
+
+test("attendance records remain class-scoped, unique, and exclude inactive students", async()=>{
+ const l=await getAttendanceLogic(),students=[{id:"s1",classId:"c1",studentNumber:1,displayName:"1번",isActive:true},{id:"s2",classId:"c1",studentNumber:2,displayName:"2번",isActive:false},{id:"s3",classId:"c2",studentNumber:1,displayName:"다른 반",isActive:true}];
+ const initial=l.attendanceForDate(students,[],"c1","2026-08-15");assert.equal(initial.length,1);assert.equal(initial[0].status,"미확인");
+ const updated=l.upsertAttendance([], [{...initial[0],status:"출석"},{...initial[0],status:"지각"}]);assert.equal(updated.length,1);assert.equal(updated[0].status,"지각");
+});
+
+test("attendance and submission summaries and bulk upserts are exact",async()=>{
+ const l=await getAttendanceLogic(),a=[{classId:"c",studentId:"1",attendanceDate:"2026-08-15",status:"출석",note:""},{classId:"c",studentId:"2",attendanceDate:"2026-08-15",status:"지각",note:""}];
+ assert.deepEqual({...l.attendanceSummary(a)},{미확인:0,출석:1,결석:0,지각:1,조퇴:0,결과:0});
+ const s=l.upsertSubmissions([],[{assignmentId:"a",studentId:"1",status:"미제출",note:""},{assignmentId:"a",studentId:"1",status:"제출",note:""}]);assert.equal(s.length,1);assert.equal(s[0].status,"제출");assert.equal(l.submissionSummary(s).제출,1);
+});
+
+test("dates stay as local date strings and deadlines never change submission status",async()=>{
+ const l=await getAttendanceLogic();assert.equal(l.moveDate("2026-01-01",-1),"2025-12-31");
+ const assignment={id:"a",classId:"c",title:"과제",subject:"",description:"",assignedDate:"",dueDate:"2026-08-10",status:"진행 중"};
+ const records=l.submissionForAssignment([{id:"s",classId:"c",studentNumber:1,displayName:"1번",isActive:true}],[],assignment);assert.equal(records[0].status,"미확인");
+});
+
 const settings = { selectedTables: [3, 6], difficulty: "easy", questionCount: 20, timeLimit: 0 };
 
 test("multiplication quiz generates only selected tables with correct answers", async () => {

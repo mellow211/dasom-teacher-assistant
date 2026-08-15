@@ -15,8 +15,9 @@ import { LessonPlanGenerator } from "./lesson-plan-generator";
 import { StudentObservationOrganizer } from "./student-observation-organizer";
 import { WritingFeedbackAssistant } from "./writing-feedback-assistant";
 import { MultiplicationQuiz } from "./multiplication-quiz";
+import { AttendanceAssignmentManager } from "./attendance-assignment-manager";
 
-type Section = "dashboard" | "operations" | "lessons" | "templates" | "workspace" | "help" | "messages" | "newsletters" | "lesson-plans" | "student-observations" | "writing-feedback" | "multiplication-quiz";
+type Section = "dashboard" | "operations" | "lessons" | "templates" | "workspace" | "help" | "messages" | "newsletters" | "lesson-plans" | "student-observations" | "writing-feedback" | "multiplication-quiz" | "attendance-assignments";
 type Tool = { title: string; desc: string; category: string; icon: React.ElementType; color: string; badge?: string };
 
 const nav = [
@@ -81,7 +82,7 @@ function ToolCard({ tool, selected, onClick }: { tool: Tool; selected?: boolean;
 
 function openTool(tool: Tool, setSelected: (tool: Tool) => void) {
   const routes = new Map<Tool, string>([
-    [operationTools[0], "/messages"], [operationTools[1], "/newsletters"], [operationTools[3], "/student-observations"],
+    [operationTools[0], "/messages"], [operationTools[1], "/newsletters"], [operationTools[3], "/student-observations"], [operationTools[5], "/attendance-assignments"],
     [lessonTools[0], "/lesson-plans"], [lessonTools[6], "/writing-feedback"], [lessonTools[8], "/multiplication-quiz"],
   ]);
   const route = routes.get(tool);
@@ -150,13 +151,13 @@ function HelpPage() {
 }
 
 export function AppShell({ section: raw }: { section: string }) {
-  const section: Section = (["dashboard","operations","lessons","templates","workspace","help","messages","newsletters","lesson-plans","student-observations","writing-feedback","multiplication-quiz"] as string[]).includes(raw) ? raw as Section : "dashboard";
+  const section: Section = (["dashboard","operations","lessons","templates","workspace","help","messages","newsletters","lesson-plans","student-observations","writing-feedback","multiplication-quiz","attendance-assignments"] as string[]).includes(raw) ? raw as Section : "dashboard";
   const [mobile, setMobile] = useState(false); const [notice, setNotice] = useState(false);
   const go = (href:string) => { window.location.href = href; };
   return <div className="app-shell">
-    <aside className={`sidebar ${mobile ? "open" : ""}`}><div className="brand"><span className="logo-mark"><Sparkles size={21}/></span><span><b>다솜쌤</b><small>AI 교사 도우미</small></span><button onClick={()=>setMobile(false)} className="mobile-close"><X/></button></div><nav>{nav.map(n=><a key={n.id} href={n.href} className={section===n.id || ((section==="messages" || section==="newsletters" || section==="student-observations") && n.id==="operations") || ((section==="lesson-plans" || section==="writing-feedback" || section==="multiplication-quiz") && n.id==="lessons")?"active":""}><n.icon size={19}/><span>{n.label}</span>{n.id==="lessons"&&<em>NEW</em>}</a>)}</nav><div className="side-bottom"><a href="/help" className={section==="help"?"active":""}><CircleHelp size={19}/>설정·도움말</a><div className="support"><span><Sparkles size={17}/></span><b>무엇을 도와드릴까요?</b><p>사용 중 궁금한 점을<br/>편하게 알려주세요.</p><button>도움말 보기</button></div><div className="profile"><span>김</span><div><b>김다솜 선생님</b><small>서울푸른초등학교</small></div><MoreHorizontal size={18}/></div></div></aside>
+    <aside className={`sidebar ${mobile ? "open" : ""}`}><div className="brand"><span className="logo-mark"><Sparkles size={21}/></span><span><b>다솜쌤</b><small>AI 교사 도우미</small></span><button onClick={()=>setMobile(false)} className="mobile-close"><X/></button></div><nav>{nav.map(n=><a key={n.id} href={n.href} className={section===n.id || ((section==="messages" || section==="newsletters" || section==="student-observations" || section==="attendance-assignments") && n.id==="operations") || ((section==="lesson-plans" || section==="writing-feedback" || section==="multiplication-quiz") && n.id==="lessons")?"active":""}><n.icon size={19}/><span>{n.label}</span>{n.id==="lessons"&&<em>NEW</em>}</a>)}</nav><div className="side-bottom"><a href="/help" className={section==="help"?"active":""}><CircleHelp size={19}/>설정·도움말</a><div className="support"><span><Sparkles size={17}/></span><b>무엇을 도와드릴까요?</b><p>사용 중 궁금한 점을<br/>편하게 알려주세요.</p><button>도움말 보기</button></div><div className="profile"><span>김</span><div><b>김다솜 선생님</b><small>서울푸른초등학교</small></div><MoreHorizontal size={18}/></div></div></aside>
     <div className="main-wrap"><header><button className="menu-button" onClick={()=>setMobile(true)}><Menu/></button><div className="global-search"><Search size={18}/><input placeholder="기능이나 자료를 검색해 보세요"/><kbd>⌘ K</kbd></div><div className="header-actions"><button className="icon-button" onClick={()=>setNotice(!notice)}><Bell size={19}/><i/></button><span className="header-divider"/><button className="school"><span>3-2</span><div><small>현재 학급</small><b>3학년 2반</b></div><ChevronDown size={15}/></button></div>{notice&&<div className="notice-pop"><b>알림</b><button onClick={()=>setNotice(false)}><X size={15}/></button><p>새로운 수업 도우미 기능이 추가되었어요.</p><small>방금 전</small></div>}</header>
-      <main>{section==="dashboard"&&<Dashboard go={go}/>} {section==="operations"&&<ToolsPage kind="operations"/>}{section==="lessons"&&<ToolsPage kind="lessons"/>}{section==="templates"&&<TemplatesPage/>}{section==="workspace"&&<WorkspacePage/>}{section==="help"&&<HelpPage/>}{section==="messages"&&<MessageGenerator/>}{section==="newsletters"&&<NewsletterGenerator/>}{section==="lesson-plans"&&<LessonPlanGenerator/>}{section==="student-observations"&&<StudentObservationOrganizer/>}{section==="writing-feedback"&&<WritingFeedbackAssistant/>}{section==="multiplication-quiz"&&<MultiplicationQuiz/>}</main>
+      <main>{section==="dashboard"&&<Dashboard go={go}/>} {section==="operations"&&<ToolsPage kind="operations"/>}{section==="lessons"&&<ToolsPage kind="lessons"/>}{section==="templates"&&<TemplatesPage/>}{section==="workspace"&&<WorkspacePage/>}{section==="help"&&<HelpPage/>}{section==="messages"&&<MessageGenerator/>}{section==="newsletters"&&<NewsletterGenerator/>}{section==="lesson-plans"&&<LessonPlanGenerator/>}{section==="student-observations"&&<StudentObservationOrganizer/>}{section==="writing-feedback"&&<WritingFeedbackAssistant/>}{section==="multiplication-quiz"&&<MultiplicationQuiz/>}{section==="attendance-assignments"&&<AttendanceAssignmentManager/>}</main>
     </div>{mobile&&<button className="overlay" onClick={()=>setMobile(false)} aria-label="메뉴 닫기"/>}
   </div>;
 }
