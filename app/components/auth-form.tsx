@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, Sparkles, UserRound } from "lucide-react";
+import { ArrowRight, AtSign, Eye, EyeOff, LockKeyhole, Sparkles, UserRound } from "lucide-react";
 import Link from "next/link";
 
 export function AuthForm({ mode, returnTo = "/" }: { mode: "login" | "signup"; returnTo?: string }) {
@@ -18,10 +18,9 @@ export function AuthForm({ mode, returnTo = "/" }: { mode: "login" | "signup"; r
     if (signup && password !== String(form.get("confirmPassword") || "")) { setError("비밀번호 확인이 일치하지 않습니다."); return; }
     setLoading(true);
     try {
-      const response = await fetch(`/api/auth/${mode}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: form.get("email"), password, displayName: form.get("displayName"), returnTo }) });
-      const data = await response.json() as { error?: string; redirectTo?: string; confirmationRequired?: boolean };
+      const response = await fetch(`/api/auth/${mode}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username: form.get("username"), password, displayName: form.get("displayName"), returnTo }) });
+      const data = await response.json() as { error?: string; redirectTo?: string };
       if (!response.ok) throw new Error(data.error || "요청을 처리하지 못했습니다.");
-      if (data.confirmationRequired) { setNotice("가입 확인 메일을 보냈습니다. 이메일 인증 후 로그인해 주세요."); return; }
       window.location.assign(data.redirectTo || "/");
     } catch (caught) { setError(caught instanceof Error ? caught.message : "잠시 후 다시 시도해 주세요."); }
     finally { setLoading(false); }
@@ -30,15 +29,15 @@ export function AuthForm({ mode, returnTo = "/" }: { mode: "login" | "signup"; r
   return <div className="auth-page">
     <section className="auth-intro">
       <Link className="auth-brand" href="/"><span><Sparkles size={23}/></span><strong>다솜쌤</strong><small>AI 교사 도우미</small></Link>
-      <div><p className="auth-eyebrow">선생님의 하루를 더 가볍게</p><h1>수업 준비와 학급 운영을<br/>한곳에서 시작하세요.</h1><p>교사 업무에 꼭 필요한 AI 도구와 학급 기록을<br/>내 계정으로 안전하게 관리할 수 있습니다.</p></div>
+      <div><p className="auth-eyebrow">선생님의 하루를 더 가볍게</p><h1>수업 준비와 학급 운영을<br/>한곳에서 시작하세요.</h1><p>교사 업무에 꼭 필요한 AI 도구와 학급 기록을<br/>내 아이디로 안전하게 관리할 수 있습니다.</p></div>
       <p className="auth-security"><LockKeyhole size={16}/>학급과 학생 기록은 로그인한 계정별로 구분됩니다.</p>
     </section>
     <main className="auth-main"><div className="auth-card">
-      <div className="auth-heading"><span><UserRound size={21}/></span><h2>{signup ? "회원가입" : "로그인"}</h2><p>{signup ? "다솜쌤을 이용할 교사 계정을 만들어 주세요." : "가입한 이메일과 비밀번호를 입력해 주세요."}</p></div>
+      <div className="auth-heading"><span><UserRound size={21}/></span><h2>{signup ? "회원가입" : "로그인"}</h2><p>{signup ? "사용할 아이디와 비밀번호를 정해 주세요." : "가입한 아이디와 비밀번호를 입력해 주세요."}</p></div>
       <form onSubmit={submit} noValidate>
         {signup && <label>이름 또는 표시 이름<div className="auth-input"><UserRound size={17}/><input name="displayName" required maxLength={40} placeholder="예: 김다솜 선생님"/></div></label>}
-        <label>이메일<div className="auth-input"><Mail size={17}/><input name="email" type="email" required autoComplete="email" placeholder="teacher@example.com"/></div></label>
-        {signup && <p className="auth-field-help">가입 확인 메일을 받을 수 있는 실제 이메일 주소를 입력해 주세요.</p>}
+        <label>아이디<div className="auth-input"><AtSign size={17}/><input name="username" required minLength={4} maxLength={20} pattern="[a-z0-9_]+" autoCapitalize="none" autoComplete="username" placeholder="영문 소문자, 숫자, 밑줄 4~20자"/></div></label>
+        {signup && <p className="auth-field-help">중복되지 않은 아이디이면 별도 인증 없이 바로 가입됩니다.</p>}
         <label>비밀번호<div className="auth-input"><LockKeyhole size={17}/><input name="password" type={showPassword ? "text" : "password"} required minLength={8} autoComplete={signup ? "new-password" : "current-password"} placeholder="8자 이상 입력"/><button type="button" aria-label="비밀번호 표시 전환" onClick={()=>setShowPassword(v=>!v)}>{showPassword?<EyeOff size={17}/>:<Eye size={17}/>}</button></div></label>
         {signup && <label>비밀번호 확인<div className="auth-input"><LockKeyhole size={17}/><input name="confirmPassword" type={showPassword ? "text" : "password"} required minLength={8} autoComplete="new-password" placeholder="비밀번호를 한 번 더 입력"/></div></label>}
         {error && <p className="auth-message error" role="alert">{error}</p>}

@@ -1,27 +1,17 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-const ACCESS_COOKIE = "dasom_access_token";
-const REFRESH_COOKIE = "dasom_refresh_token";
+const SESSION_COOKIE = "dasom_session";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
 
-export type AppUser = {
-  id: string;
-  email: string;
-  displayName: string;
-};
+export type AppUser = { id: string; username: string; email: string; displayName: string };
+type AccountRow = { account_id: string; username: string; display_name: string };
+type LoginRow = AccountRow & { session_token: string; expires_at: string };
 
-type AuthSession = {
-  access_token: string;
-  refresh_token: string;
-  expires_in?: number;
-  user: { id: string; email?: string; user_metadata?: { display_name?: string } };
-};
-
-function authConfig() {
+function config() {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_PUBLISHABLE_KEY;
-  if (!url || !key) throw new Error("인증 서비스 설정을 확인해 주세요.");
+  if (!url || !key) throw new Error("계정 서비스 설정을 확인해 주세요.");
   return { url: url.replace(/\/$/, ""), key };
 }
 
@@ -35,100 +25,87 @@ export function safeReturnTo(value: string | null | undefined) {
     const url = new URL(value, "https://app.local");
     if (url.origin !== "https://app.local" || ["/login", "/signup"].includes(url.pathname)) return "/";
     return `${url.pathname}${url.search}${url.hash}`;
-  } catch {
-    return "/";
-  }
+  } catch { return "/"; }
 }
 
-async function authRequest(path: string, init: RequestInit) {
-  const { url, key } = authConfig();
-  return fetch(`${url}/auth/v1${path}`, {
-    ...init,
-    headers: { apikey: key, "Content-Type": "application/json", ...(init.headers || {}) },
+async function rpc<T>(name: string, body: Record<string, string>): Promise<T[]> {
+  const { url, key } = config();
+  const response = await fetch(`${url}/rest/v1/rpc/${name}`, {
+    method: "POST",
+    headers: { apikey: key, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
     cache: "no-store",
   });
+  const data = await response.json().catch(() => null) as { message?: string } | T[] | null;
+  if (!response.ok) throw new Error(accountError((data as { message?: string } | null)?.message));
+  return Array.isArray(data) ? data : [];
 }
 
-export async function signUpWithPassword(email: string, password: string, displayName: string) {
-  const response = await authRequest("/signup", {
-    method: "POST",
-    body: JSON.stringify({ email, password, data: { display_name: displayName } }),
-  });
-  const data = await response.json() as AuthSession & { msg?: string; message?: string };
-  if (!response.ok) throw new Error(authErrorMessage(response.status, data.message || data.msg));
-  if (data.access_token && data.refresh_token) await setAuthCookies(data);
-  return { signedIn: Boolean(data.access_token), email: data.user?.email || email };
+export function normalizeUsername(value: string) { return value.trim().toLowerCase(); }
+export function validUsername(value: string) { return /^[a-z0-9_]{4,20}$/.test(normalizeUsername(value)); }
+
+export async function signUpWithPassword(username: string, password: string, displayName: string) {
+  const normalized = normalizeUsername(username);
+  await rpc<AccountRow>("register_app_account", { p_username: normalized, p_password: password, p_display_name: displayName.trim() });
+  return signInWithPassword(normalized, password);
 }
 
-export async function signInWithPassword(email: string, password: string) {
-  const response = await authRequest("/token?grant_type=password", { method: "POST", body: JSON.stringify({ email, password }) });
-  const data = await response.json() as AuthSession & { error_description?: string; message?: string };
-  if (!response.ok) throw new Error(authErrorMessage(response.status, data.error_description || data.message));
-  await setAuthCookies(data);
-  return toAppUser(data.user);
+export async function claimLegacyAccountData(oldEmail: string, username: string) {
+  const secret = process.env.SUPABASE_OWNER_SECRET;
+  if (!secret || secret.length < 32 || !oldEmail.trim()) return;
+  const [oldOwner, newOwner] = await Promise.all([
+    ownerKey(oldEmail.trim().toLowerCase(), secret),
+    ownerKey(`${normalizeUsername(username)}@accounts.dasom.local`, secret),
+  ]);
+  await rpc<never>("claim_legacy_teacher_data", { p_old_owner_key: oldOwner, p_new_owner_key: newOwner });
 }
 
-async function setAuthCookies(session: AuthSession) {
+export async function signInWithPassword(username: string, password: string) {
+  const rows = await rpc<LoginRow>("login_app_account", { p_username: normalizeUsername(username), p_password: password });
+  const row = rows[0];
+  if (!row) throw new Error("아이디 또는 비밀번호가 올바르지 않습니다.");
   const store = await cookies();
-  store.set(ACCESS_COOKIE, session.access_token, cookieOptions(session.expires_in || 3600));
-  store.set(REFRESH_COOKIE, session.refresh_token, cookieOptions());
+  store.set(SESSION_COOKIE, row.session_token, cookieOptions());
+  return toUser(row);
 }
 
 export async function clearAuthCookies() {
   const store = await cookies();
-  store.set(ACCESS_COOKIE, "", cookieOptions(0));
-  store.set(REFRESH_COOKIE, "", cookieOptions(0));
-}
-
-async function userForToken(accessToken: string) {
-  const response = await authRequest("/user", { method: "GET", headers: { Authorization: `Bearer ${accessToken}` } });
-  if (!response.ok) return null;
-  return toAppUser(await response.json() as AuthSession["user"]);
-}
-
-async function refreshSession(refreshToken: string) {
-  const response = await authRequest("/token?grant_type=refresh_token", { method: "POST", body: JSON.stringify({ refresh_token: refreshToken }) });
-  if (!response.ok) return null;
-  const session = await response.json() as AuthSession;
-  try { await setAuthCookies(session); } catch { /* Server-rendered reads cannot always rotate cookies. */ }
-  return { user: toAppUser(session.user), accessToken: session.access_token };
+  const token = store.get(SESSION_COOKIE)?.value;
+  if (token) await rpc<never>("logout_app_session", { p_session_token: token }).catch(() => undefined);
+  store.set(SESSION_COOKIE, "", cookieOptions(0));
 }
 
 export async function getAppSession(): Promise<{ user: AppUser; accessToken: string } | null> {
-  const store = await cookies();
-  const accessToken = store.get(ACCESS_COOKIE)?.value;
-  if (accessToken) {
-    const user = await userForToken(accessToken);
-    if (user) return { user, accessToken };
-  }
-  const refreshToken = store.get(REFRESH_COOKIE)?.value;
-  return refreshToken ? refreshSession(refreshToken) : null;
+  const token = (await cookies()).get(SESSION_COOKIE)?.value;
+  if (!token) return null;
+  const rows = await rpc<AccountRow>("get_app_session", { p_session_token: token }).catch(() => []);
+  return rows[0] ? { user: toUser(rows[0]), accessToken: token } : null;
 }
 
-export async function getAppUser() {
-  return (await getAppSession())?.user || null;
-}
-
+export async function getAppUser() { return (await getAppSession())?.user || null; }
 export async function requireAppUser(returnTo: string) {
   const user = await getAppUser();
   if (user) return user;
   redirect(`/login?returnTo=${encodeURIComponent(safeReturnTo(returnTo))}`);
 }
 
-function toAppUser(user: AuthSession["user"]): AppUser {
-  const email = user.email || "";
-  const displayName = typeof user.user_metadata?.display_name === "string" ? user.user_metadata.display_name.trim() : "";
-  return { id: user.id, email, displayName: displayName || email.split("@")[0] || "교사" };
+function toUser(row: AccountRow): AppUser {
+  return { id: row.account_id, username: row.username, email: `${row.username}@accounts.dasom.local`, displayName: row.display_name };
 }
 
-function authErrorMessage(status: number, detail?: string) {
+function accountError(detail?: string) {
   const value = (detail || "").toLowerCase();
-  if (value.includes("email address") && value.includes("invalid")) return "사용할 수 없는 이메일 주소입니다. 실제로 사용하는 이메일 주소를 입력해 주세요.";
-  if (value.includes("email rate limit") || value.includes("over_email_send_rate_limit")) return "가입 확인 메일 발송 한도를 초과했습니다. 잠시 기다린 뒤 한 번만 다시 시도해 주세요.";
-  if (value.includes("invalid login") || value.includes("invalid credentials")) return "이메일 또는 비밀번호가 올바르지 않습니다.";
-  if (value.includes("already registered") || value.includes("already been registered")) return "이미 가입된 이메일입니다. 로그인해 주세요.";
-  if (value.includes("email not confirmed")) return "이메일 인증을 완료한 뒤 로그인해 주세요.";
-  if (value.includes("password") && value.includes("characters")) return "비밀번호는 8자 이상으로 입력해 주세요.";
-  if (status === 429) return "요청이 많습니다. 잠시 기다린 뒤 한 번만 다시 시도해 주세요.";
-  return "인증 요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+  if (value.includes("username_already_exists") || value.includes("duplicate key")) return "이미 사용 중인 아이디입니다. 다른 아이디를 입력해 주세요.";
+  if (value.includes("invalid_username")) return "아이디는 영문 소문자, 숫자, 밑줄로 4~20자 입력해 주세요.";
+  if (value.includes("invalid_password")) return "비밀번호는 8~72자로 입력해 주세요.";
+  if (value.includes("invalid_display_name")) return "이름 또는 표시 이름을 확인해 주세요.";
+  return "계정 요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+}
+
+async function ownerKey(identity: string, secret: string) {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const signed = await crypto.subtle.sign("HMAC", key, encoder.encode(identity));
+  return Array.from(new Uint8Array(signed), byte => byte.toString(16).padStart(2, "0")).join("");
 }

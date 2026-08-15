@@ -5,5 +5,5 @@ export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const user = await requireAppUser("/");
-  return <AppShell section="dashboard" userEmail={user.email} userName={user.displayName}/>;
+  return <AppShell section="dashboard" userEmail={user.username} userName={user.displayName}/>;
 }
