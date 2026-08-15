@@ -143,6 +143,7 @@ test("renders the message generator route", async () => {
   const html = await response.text();
   assert.match(html, /메시지 생성기/);
   assert.match(html, /입력 내용은 저장하지 않아요/);
+  assert.doesNotMatch(html, /세부 상황/);
 });
 
 test("rejects an incomplete message request before calling AI", async () => {

@@ -3,14 +3,13 @@
 import { useState } from "react";
 import { Check, LoaderCircle, Sparkles } from "lucide-react";
 import {
-  LENGTHS, MESSAGE_SITUATIONS, MESSAGE_TYPES, RECIPIENTS, TONES,
-  validateMessageInput, type MessageGeneratorInput, type MessageType, type ValidationErrors,
+  LENGTHS, MESSAGE_TYPES, RECIPIENTS, TONES,
+  validateMessageInput, type MessageGeneratorInput, type ValidationErrors,
 } from "../lib/message-generator";
 import { FieldError, GeneratorResult } from "./generator-result";
 
 const initialForm: MessageGeneratorInput = {
   messageType: "문의 답변",
-  situation: "결석 문의",
   recipient: "학부모",
   studentName: "",
   facts: "",
@@ -27,22 +26,9 @@ export function MessageGenerator() {
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState("");
 
-  const situations = MESSAGE_SITUATIONS[form.messageType];
-  const needsDate = ["결석 문의", "지각", "준비물 미지참", "과제 미제출"].includes(form.situation);
-
   const update = <K extends keyof MessageGeneratorInput>(key: K, value: MessageGeneratorInput[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
     setErrors((current) => ({ ...current, [key]: undefined }));
-  };
-
-  const changeType = (messageType: MessageType) => {
-    setForm((current) => ({
-      ...current,
-      messageType,
-      situation: MESSAGE_SITUATIONS[messageType][0],
-      deadline: "",
-    }));
-    setErrors((current) => ({ ...current, messageType: undefined, situation: undefined }));
   };
 
   const generate = async () => {
@@ -81,8 +67,7 @@ export function MessageGenerator() {
       <section className="form-panel message-form">
         <div className="panel-head"><div><span className="eyebrow">STEP 1</span><h3>메시지 정보 입력</h3></div><span className="required">* 필수 항목</span></div>
 
-        <fieldset><legend>메시지 유형 *</legend><div className="choice-grid two">{MESSAGE_TYPES.map((type) => <button type="button" key={type} className={form.messageType === type ? "choice active" : "choice"} onClick={() => changeType(type)}>{type}</button>)}</div><FieldError message={errors.messageType} /></fieldset>
-        <fieldset><legend>세부 상황 *</legend><div className="choice-grid three">{situations.map((situation) => <button type="button" key={situation} className={form.situation === situation ? "choice active" : "choice"} onClick={() => update("situation", situation)}>{situation}</button>)}</div><FieldError message={errors.situation} /></fieldset>
+        <fieldset><legend>메시지 유형 *</legend><div className="choice-grid two">{MESSAGE_TYPES.map((type) => <button type="button" key={type} className={form.messageType === type ? "choice active" : "choice"} onClick={() => update("messageType", type)}>{type}</button>)}</div><FieldError message={errors.messageType} /></fieldset>
 
         <div className="field-row">
           <label>수신 대상 *<select value={form.recipient} onChange={(event) => update("recipient", event.target.value as MessageGeneratorInput["recipient"])}>{RECIPIENTS.map((recipient) => <option key={recipient}>{recipient}</option>)}</select><FieldError message={errors.recipient} /></label>
@@ -91,7 +76,7 @@ export function MessageGenerator() {
 
         <label>전달할 상황 *<small className="field-help">직접 확인한 사실만 구체적으로 적어 주세요.</small><textarea value={form.facts} maxLength={2000} placeholder="예: 오늘 1교시 시작 후 10분 뒤에 교실에 도착했습니다." onChange={(event) => update("facts", event.target.value)} /><FieldError message={errors.facts} /></label>
         <label>전달하고 싶은 내용 또는 요청 사항 *<textarea value={form.request} maxLength={2000} placeholder="예: 내일부터는 수업 시작 전까지 등교할 수 있도록 가정에서도 확인 부탁드립니다." onChange={(event) => update("request", event.target.value)} /><FieldError message={errors.request} /></label>
-        {needsDate && <label>날짜 또는 제출 기한 <span className="optional">필요한 경우</span><input value={form.deadline} maxLength={80} placeholder="예: 8월 14일 금요일까지" onChange={(event) => update("deadline", event.target.value)} /></label>}
+        <label>날짜 또는 제출 기한 <span className="optional">필요한 경우</span><input value={form.deadline} maxLength={80} placeholder="예: 8월 14일 금요일까지" onChange={(event) => update("deadline", event.target.value)} /></label>
 
         <div className="divider" />
         <div className="panel-head option-head"><div><span className="eyebrow">STEP 2</span><h3>표현 방식 선택</h3></div></div>
