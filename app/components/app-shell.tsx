@@ -1,13 +1,13 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Bell, BookOpen, BriefcaseBusiness, CalendarDays, ChevronDown, ChevronRight,
   CircleHelp, Clock3, FileText, FolderOpen, Grid2X2, Heart,
   Home, LayoutTemplate, Menu, MessageCircleMore, MoreHorizontal, Plus, Search,
   Sparkles, Star, Users, WandSparkles, X, Check, Save, SlidersHorizontal,
-  ClipboardCheck, ChartNoAxesColumnIncreasing, UserRoundCog, PenLine, Lightbulb, Calculator
+  ClipboardCheck, ChartNoAxesColumnIncreasing, UserRound, UserRoundCog, PenLine, Lightbulb, Calculator
 } from "lucide-react";
 import { MessageGenerator } from "./message-generator";
 import { NewsletterGenerator } from "./newsletter-generator";
@@ -95,9 +95,10 @@ function EmptyState() {
   return <div className="empty"><span><FolderOpen size={25} /></span><b>아직 저장된 자료가 없어요</b><p>마음에 드는 결과물을 저장하면<br />이곳에서 다시 확인할 수 있어요.</p><button className="outline-btn"><Plus size={16} /> 새 자료 만들기</button></div>;
 }
 
-function Dashboard({ go }: { go: (href: string) => void }) {
+function Dashboard({ go, userName }: { go: (href: string) => void; userName: string }) {
+  const greetingName = userName.endsWith("선생님") ? userName : `${userName} 선생님`;
   return <>
-    <div className="welcome"><div><span className="date"><CalendarDays size={14} /> 2026년 8월 10일 월요일</span><h1>김다솜 선생님, 좋은 아침이에요 👋</h1><p>오늘도 다솜쌤과 함께 여유롭게 수업을 준비해 보세요.</p></div><div className="weather"><span>☀️</span><div><b>서울 28°C</b><small>쾌청한 하루예요</small></div></div></div>
+    <div className="welcome"><div><span className="date"><CalendarDays size={14} /> {new Intl.DateTimeFormat("ko-KR", { dateStyle: "full" }).format(new Date())}</span><h1>{greetingName}, 반가워요 👋</h1><p>오늘도 다솜쌤과 함께 여유롭게 수업을 준비해 보세요.</p></div><div className="weather"><span>☀️</span><div><b>오늘의 수업 준비</b><small>차근차근 시작해 보세요</small></div></div></div>
     <section className="hero-cards">
       <button className="hero-card blue" onClick={() => go("/operations")}><span className="hero-icon"><BriefcaseBusiness /></span><span><small>학급 운영을 더 가볍게</small><b>업무·학급 운영 도우미</b><em>소통, 기록, 학급관리 업무를 도와드려요 <ChevronRight size={17} /></em></span><span className="orb" /></button>
       <button className="hero-card green" onClick={() => go("/lessons")}><span className="hero-icon"><BookOpen /></span><span><small>수업 준비를 더 알차게</small><b>수업 도우미</b><em>지도안부터 평가까지 한 번에 준비해요 <ChevronRight size={17} /></em></span><span className="orb" /></button>
@@ -144,9 +145,10 @@ function WorkspacePage() {
   <section className="card empty-card"><div className="card-head"><div><h2>저장한 결과물</h2><p>최근 저장한 자료가 표시됩니다.</p></div></div><EmptyState/></section></>;
 }
 
-function HelpPage() {
+function HelpPage({userName,userId}:{userName:string;userId:string}) {
   const [open, setOpen] = useState(0);
   return <><div className="page-title"><div><span className="eyebrow">SETTINGS & HELP</span><h1>설정·도움말</h1><p>다솜쌤을 더 편리하게 사용하는 방법을 알아보세요.</p></div></div>
+  <section className="card account-summary"><span className="tool-icon blue"><UserRound size={21}/></span><div><small>현재 로그인 계정</small><b>{userName}</b><em>@{userId}</em></div><button className="outline-btn" onClick={async()=>{await fetch("/api/auth/logout",{method:"POST"});window.location.assign("/login")}}>로그아웃</button></section>
   <div className="help-grid"><section className="card intro-card"><span className="logo-mark"><Sparkles/></span><div><span className="eyebrow">서비스 소개</span><h2>선생님의 하루에<br/>작은 여유를 더해요</h2><p>다솜쌤은 수업 준비와 학급 운영에 필요한 도구를 한곳에 모은 AI 교사 도우미입니다.</p></div></section><section className="card"><div className="card-head"><div><h2>빠른 사용 가이드</h2><p>세 단계면 충분해요.</p></div></div><ol className="guide"><li><span>1</span><div><b>필요한 도구 선택</b><p>카테고리에서 원하는 도구를 찾아요.</p></div></li><li><span>2</span><div><b>간단한 정보 입력</b><p>학년, 교과, 상황을 알려주세요.</p></div></li><li><span>3</span><div><b>결과 확인 및 저장</b><p>내용을 다듬어 바로 활용해요.</p></div></li></ol></section></div>
   <section className="card faq"><div className="card-head"><div><h2>자주 묻는 질문</h2><p>궁금한 내용을 확인해 보세요.</p></div></div>{["AI가 만든 결과를 바로 사용해도 되나요?","입력한 학생 정보는 안전하게 보호되나요?","생성 결과를 수정하거나 다시 만들 수 있나요?","새로운 기능은 언제 추가되나요?"].map((q,i)=><button key={q} onClick={()=>setOpen(open===i?-1:i)}><span>{q}{open===i&&<small>현재는 디자인 프로토타입이며, 실제 서비스에서는 선생님이 내용을 확인하고 자유롭게 수정한 뒤 사용할 수 있어요.</small>}</span><ChevronDown className={open===i?"rotate":""} size={18}/></button>)}</section>
   <section className="update-banner"><span><Sparkles size={22}/></span><div><b>더 많은 기능을 준비하고 있어요</b><p>학교 일정 연동, 협업 공간, 맞춤형 추천 기능이 순차적으로 추가될 예정입니다.</p></div><span className="subject-badge">업데이트 예정</span></section></>;
@@ -155,11 +157,13 @@ function HelpPage() {
 export function AppShell({ section: raw, userEmail, userName }: { section: string; userEmail?: string; userName?: string }) {
   const section: Section = (["dashboard","operations","lessons","templates","workspace","help","messages","newsletters","lesson-plans","student-observations","writing-feedback","multiplication-quiz","attendance-assignments","class-roles","class-management","surveys"] as string[]).includes(raw) ? raw as Section : "dashboard";
   const [mobile, setMobile] = useState(false); const [notice, setNotice] = useState(false);
+  const [currentClass, setCurrentClass] = useState<{grade:number;classNumber:number;name?:string}|null>(null);
+  useEffect(()=>{let active=true;fetch("/api/attendance-assignments",{cache:"no-store"}).then(r=>r.ok?r.json():null).then((data:{classes?:{grade:number;classNumber:number;name?:string}[]}|null)=>{if(active)setCurrentClass(data?.classes?.[0]||null)}).catch(()=>undefined);return()=>{active=false}},[]);
   const go = (href:string) => { window.location.href = href; };
   return <div className="app-shell">
     <aside className={`sidebar ${mobile ? "open" : ""}`}><div className="brand"><span className="logo-mark"><Sparkles size={21}/></span><span><b>다솜쌤</b><small>AI 교사 도우미</small></span><button onClick={()=>setMobile(false)} className="mobile-close"><X/></button></div><nav>{nav.map(n=>{const active=section===n.id || ((section==="messages" || section==="newsletters" || section==="student-observations" || section==="attendance-assignments" || section==="class-roles" || section==="surveys") && n.id==="operations") || ((section==="lesson-plans" || section==="writing-feedback" || section==="multiplication-quiz") && n.id==="lessons");return <a key={n.id} href={n.href} className={`${active?"active":""} ${n.id==="class-management"?"standalone-nav":""}`}><n.icon size={19}/><span>{n.label}</span>{n.id==="lessons"&&<em>NEW</em>}</a>})}</nav><div className="side-bottom"><a href="/help" className={section==="help"?"active":""}><CircleHelp size={19}/>설정·도움말</a><div className="support"><span><Sparkles size={17}/></span><b>무엇을 도와드릴까요?</b><p>사용 중 궁금한 점을<br/>편하게 알려주세요.</p><button>도움말 보기</button></div><div className="profile"><span>{(userName||userEmail||"교").slice(0,1)}</span><div><b>{userName||"로그인한 교사"}</b><small>{userEmail||""}</small></div><button className="logout-button" aria-label="로그아웃" title="로그아웃" onClick={async()=>{await fetch("/api/auth/logout",{method:"POST"});window.location.assign("/login")}}><MoreHorizontal size={18}/></button></div></div></aside>
-    <div className="main-wrap"><header><button className="menu-button" onClick={()=>setMobile(true)}><Menu/></button><div className="global-search"><Search size={18}/><input placeholder="기능이나 자료를 검색해 보세요"/><kbd>⌘ K</kbd></div><div className="header-actions"><button className="icon-button" onClick={()=>setNotice(!notice)}><Bell size={19}/><i/></button><span className="header-divider"/><button className="school"><span>3-2</span><div><small>현재 학급</small><b>3학년 2반</b></div><ChevronDown size={15}/></button></div>{notice&&<div className="notice-pop"><b>알림</b><button onClick={()=>setNotice(false)}><X size={15}/></button><p>새로운 수업 도우미 기능이 추가되었어요.</p><small>방금 전</small></div>}</header>
-      <main>{section==="dashboard"&&<Dashboard go={go}/>} {section==="operations"&&<ToolsPage kind="operations"/>}{section==="lessons"&&<ToolsPage kind="lessons"/>}{section==="templates"&&<TemplatesPage/>}{section==="workspace"&&<WorkspacePage/>}{section==="help"&&<HelpPage/>}{section==="messages"&&<MessageGenerator/>}{section==="newsletters"&&<NewsletterGenerator/>}{section==="lesson-plans"&&<LessonPlanGenerator/>}{section==="student-observations"&&<StudentObservationOrganizer/>}{section==="writing-feedback"&&<WritingFeedbackAssistant/>}{section==="multiplication-quiz"&&<MultiplicationQuiz/>}{section==="attendance-assignments"&&<AttendanceAssignmentManager/>}{section==="class-roles"&&<ClassRoleAssignment/>}{section==="class-management"&&<ClassStudentManager/>}{section==="surveys"&&<SurveyManager/>}</main>
+    <div className="main-wrap"><header><button className="menu-button" onClick={()=>setMobile(true)}><Menu/></button><div className="global-search"><Search size={18}/><input placeholder="기능이나 자료를 검색해 보세요"/><kbd>⌘ K</kbd></div><div className="header-actions"><button className="icon-button" onClick={()=>setNotice(!notice)}><Bell size={19}/><i/></button><span className="header-divider"/><button className="school" onClick={()=>go("/class-management")}><span>{currentClass?`${currentClass.grade}-${currentClass.classNumber}`:"+"}</span><div><small>현재 학급</small><b>{currentClass?`${currentClass.grade}학년 ${currentClass.classNumber}반${currentClass.name?` · ${currentClass.name}`:""}`:"학급을 등록해 주세요"}</b></div><ChevronRight size={15}/></button></div>{notice&&<div className="notice-pop"><b>알림</b><button onClick={()=>setNotice(false)}><X size={15}/></button><p>{userName||"선생님"} 계정으로 안전하게 로그인되어 있어요.</p><small>@{userEmail}</small></div>}</header>
+      <main>{section==="dashboard"&&<Dashboard go={go} userName={userName||userEmail||"선생님"}/>} {section==="operations"&&<ToolsPage kind="operations"/>}{section==="lessons"&&<ToolsPage kind="lessons"/>}{section==="templates"&&<TemplatesPage/>}{section==="workspace"&&<WorkspacePage/>}{section==="help"&&<HelpPage userName={userName||"선생님"} userId={userEmail||""}/>} {section==="messages"&&<MessageGenerator/>}{section==="newsletters"&&<NewsletterGenerator/>}{section==="lesson-plans"&&<LessonPlanGenerator/>}{section==="student-observations"&&<StudentObservationOrganizer/>}{section==="writing-feedback"&&<WritingFeedbackAssistant/>}{section==="multiplication-quiz"&&<MultiplicationQuiz/>}{section==="attendance-assignments"&&<AttendanceAssignmentManager/>}{section==="class-roles"&&<ClassRoleAssignment/>}{section==="class-management"&&<ClassStudentManager/>}{section==="surveys"&&<SurveyManager/>}</main>
     </div>{mobile&&<button className="overlay" onClick={()=>setMobile(false)} aria-label="메뉴 닫기"/>}
   </div>;
 }

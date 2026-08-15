@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 .logout-button{border:0;background:transparent;color:#8c96a7;padding:5px;cursor:pointer;border-radius:7px}.logout-button:hover{background:#f1f4f8;color:#365fbd}
+.account-summary{display:flex;align-items:center;gap:12px;margin-bottom:17px}.account-summary>div{display:flex;flex:1;flex-direction:column;gap:3px}.account-summary small{font-size:9px;color:#8893a5}.account-summary b{font-size:14px}.account-summary em{font-size:10px;color:#5972a5;font-style:normal}
 
 :root{--navy:#172338;--muted:#6b778c;--line:#e8edf3;--blue:#3867df;--blue-soft:#edf3ff;--green:#2e9c78;--green-soft:#eaf8f2;--bg:#f6f8fb}
 *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--navy);font-family:"Pretendard","Noto Sans KR","Segoe UI",sans-serif}button,input,textarea{font:inherit}button{color:inherit}a{text-decoration:none;color:inherit}
