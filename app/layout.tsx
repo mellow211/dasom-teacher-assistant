@@ -4,6 +4,7 @@ import "./observation.css";
 import "./writing-feedback.css";
 import "./multiplication-quiz.css";
 import "./daily-math.css";
+import "./daily-english.css";
 import "./attendance-assignment.css";
 import "./class-role-assignment.css";
 import "./class-student-manager.css";
