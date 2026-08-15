@@ -38,6 +38,7 @@ export function AuthForm({ mode, returnTo = "/" }: { mode: "login" | "signup"; r
       <form onSubmit={submit} noValidate>
         {signup && <label>이름 또는 표시 이름<div className="auth-input"><UserRound size={17}/><input name="displayName" required maxLength={40} placeholder="예: 김다솜 선생님"/></div></label>}
         <label>이메일<div className="auth-input"><Mail size={17}/><input name="email" type="email" required autoComplete="email" placeholder="teacher@example.com"/></div></label>
+        {signup && <p className="auth-field-help">가입 확인 메일을 받을 수 있는 실제 이메일 주소를 입력해 주세요.</p>}
         <label>비밀번호<div className="auth-input"><LockKeyhole size={17}/><input name="password" type={showPassword ? "text" : "password"} required minLength={8} autoComplete={signup ? "new-password" : "current-password"} placeholder="8자 이상 입력"/><button type="button" aria-label="비밀번호 표시 전환" onClick={()=>setShowPassword(v=>!v)}>{showPassword?<EyeOff size={17}/>:<Eye size={17}/>}</button></div></label>
         {signup && <label>비밀번호 확인<div className="auth-input"><LockKeyhole size={17}/><input name="confirmPassword" type={showPassword ? "text" : "password"} required minLength={8} autoComplete="new-password" placeholder="비밀번호를 한 번 더 입력"/></div></label>}
         {error && <p className="auth-message error" role="alert">{error}</p>}

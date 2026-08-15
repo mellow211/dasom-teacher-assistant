@@ -123,10 +123,12 @@ function toAppUser(user: AuthSession["user"]): AppUser {
 
 function authErrorMessage(status: number, detail?: string) {
   const value = (detail || "").toLowerCase();
+  if (value.includes("email address") && value.includes("invalid")) return "사용할 수 없는 이메일 주소입니다. 실제로 사용하는 이메일 주소를 입력해 주세요.";
+  if (value.includes("email rate limit") || value.includes("over_email_send_rate_limit")) return "가입 확인 메일 발송 한도를 초과했습니다. 잠시 기다린 뒤 한 번만 다시 시도해 주세요.";
   if (value.includes("invalid login") || value.includes("invalid credentials")) return "이메일 또는 비밀번호가 올바르지 않습니다.";
   if (value.includes("already registered") || value.includes("already been registered")) return "이미 가입된 이메일입니다. 로그인해 주세요.";
   if (value.includes("email not confirmed")) return "이메일 인증을 완료한 뒤 로그인해 주세요.";
   if (value.includes("password") && value.includes("characters")) return "비밀번호는 8자 이상으로 입력해 주세요.";
-  if (status === 429) return "요청이 많습니다. 잠시 후 다시 시도해 주세요.";
+  if (status === 429) return "요청이 많습니다. 잠시 기다린 뒤 한 번만 다시 시도해 주세요.";
   return "인증 요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.";
 }
