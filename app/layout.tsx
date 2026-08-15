@@ -1,12 +1,9 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
 import "./globals.css";
 import "./observation.css";
 import "./writing-feedback.css";
 import "./multiplication-quiz.css";
 import "./attendance-assignment.css";
-
-const geist = Geist({ variable: "--font-geist", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "다솜쌤 | AI 교사 도우미",
@@ -15,5 +12,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="ko"><body className={geist.variable}>{children}</body></html>;
+  return <html lang="ko"><body>{children}</body></html>;
 }
