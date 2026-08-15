@@ -15,12 +15,13 @@ import { LessonPlanGenerator } from "./lesson-plan-generator";
 import { StudentObservationOrganizer } from "./student-observation-organizer";
 import { WritingFeedbackAssistant } from "./writing-feedback-assistant";
 import { MultiplicationQuiz } from "./multiplication-quiz";
+import { DailyMathWorksheet } from "./daily-math-worksheet";
 import { AttendanceAssignmentManager } from "./attendance-assignment-manager";
 import { ClassRoleAssignment } from "./class-role-assignment";
 import { ClassStudentManager } from "./class-student-manager";
 import { SurveyManager } from "./survey-manager";
 
-type Section = "dashboard" | "operations" | "lessons" | "templates" | "workspace" | "help" | "messages" | "newsletters" | "lesson-plans" | "student-observations" | "writing-feedback" | "multiplication-quiz" | "attendance-assignments" | "class-roles" | "class-management" | "surveys";
+type Section = "dashboard" | "operations" | "lessons" | "templates" | "workspace" | "help" | "messages" | "newsletters" | "lesson-plans" | "student-observations" | "writing-feedback" | "multiplication-quiz" | "daily-math" | "attendance-assignments" | "class-roles" | "class-management" | "surveys";
 type Tool = { title: string; desc: string; category: string; icon: React.ElementType; color: string; badge?: string };
 
 const nav = [
@@ -52,6 +53,8 @@ const lessonTools: Tool[] = [
   { title: "수업 아이디어 생성기", desc: "참여를 이끄는 활동 아이디어", category: "공통", icon: Lightbulb, color: "orange" },
   { title: "곱셈 퀴즈", desc: "구구단과 곱셈 문제를 혼자 또는 친구와 연습", category: "수학", icon: Calculator, color: "blue", badge: "NEW" },
 ];
+
+lessonTools.push({ title: "일일수학 연산학습지", desc: "학년과 수준에 맞는 연산 문제와 정답지를 인쇄", category: "수학", icon: Calculator, color: "mint", badge: "NEW" });
 
 const recent = [
   ["3학년 1학기 수학 지도안", "지도안 생성기", "오늘 오전 10:24", "수학"],
@@ -85,7 +88,7 @@ function ToolCard({ tool, selected, onClick }: { tool: Tool; selected?: boolean;
 function openTool(tool: Tool, setSelected: (tool: Tool) => void) {
   const routes = new Map<Tool, string>([
     [operationTools[0], "/messages"], [operationTools[1], "/newsletters"], [operationTools[2], "/student-observations"], [operationTools[3], "/surveys"], [operationTools[4], "/attendance-assignments"], [operationTools[5], "/class-roles"],
-    [lessonTools[0], "/lesson-plans"], [lessonTools[6], "/writing-feedback"], [lessonTools[8], "/multiplication-quiz"],
+    [lessonTools[0], "/lesson-plans"], [lessonTools[6], "/writing-feedback"], [lessonTools[8], "/multiplication-quiz"], [lessonTools[9], "/daily-math"],
   ]);
   const route = routes.get(tool);
   if (route) window.location.assign(route); else setSelected(tool);
@@ -155,15 +158,15 @@ function HelpPage({userName,userId}:{userName:string;userId:string}) {
 }
 
 export function AppShell({ section: raw, userEmail, userName }: { section: string; userEmail?: string; userName?: string }) {
-  const section: Section = (["dashboard","operations","lessons","templates","workspace","help","messages","newsletters","lesson-plans","student-observations","writing-feedback","multiplication-quiz","attendance-assignments","class-roles","class-management","surveys"] as string[]).includes(raw) ? raw as Section : "dashboard";
+  const section: Section = (["dashboard","operations","lessons","templates","workspace","help","messages","newsletters","lesson-plans","student-observations","writing-feedback","multiplication-quiz","daily-math","attendance-assignments","class-roles","class-management","surveys"] as string[]).includes(raw) ? raw as Section : "dashboard";
   const [mobile, setMobile] = useState(false); const [notice, setNotice] = useState(false);
   const [currentClass, setCurrentClass] = useState<{grade:number;classNumber:number;name?:string}|null>(null);
-  useEffect(()=>{let active=true;fetch("/api/attendance-assignments",{cache:"no-store"}).then(r=>r.ok?r.json():null).then((data:{classes?:{grade:number;classNumber:number;name?:string}[]}|null)=>{if(active)setCurrentClass(data?.classes?.[0]||null)}).catch(()=>undefined);return()=>{active=false}},[]);
+  useEffect(()=>{let active=true;fetch("/api/attendance-assignments",{cache:"no-store"}).then(r=>r.ok?r.json():null).then((data)=>{const result=data as {classes?:{grade:number;classNumber:number;name?:string}[]}|null;if(active)setCurrentClass(result?.classes?.[0]||null)}).catch(()=>undefined);return()=>{active=false}},[]);
   const go = (href:string) => { window.location.href = href; };
   return <div className="app-shell">
     <aside className={`sidebar ${mobile ? "open" : ""}`}><div className="brand"><span className="logo-mark"><Sparkles size={21}/></span><span><b>다솜쌤</b><small>AI 교사 도우미</small></span><button onClick={()=>setMobile(false)} className="mobile-close"><X/></button></div><nav>{nav.map(n=>{const active=section===n.id || ((section==="messages" || section==="newsletters" || section==="student-observations" || section==="attendance-assignments" || section==="class-roles" || section==="surveys") && n.id==="operations") || ((section==="lesson-plans" || section==="writing-feedback" || section==="multiplication-quiz") && n.id==="lessons");return <a key={n.id} href={n.href} className={`${active?"active":""} ${n.id==="class-management"?"standalone-nav":""}`}><n.icon size={19}/><span>{n.label}</span>{n.id==="lessons"&&<em>NEW</em>}</a>})}</nav><div className="side-bottom"><a href="/help" className={section==="help"?"active":""}><CircleHelp size={19}/>설정·도움말</a><div className="support"><span><Sparkles size={17}/></span><b>무엇을 도와드릴까요?</b><p>사용 중 궁금한 점을<br/>편하게 알려주세요.</p><button>도움말 보기</button></div><div className="profile"><span>{(userName||userEmail||"교").slice(0,1)}</span><div><b>{userName||"로그인한 교사"}</b><small>{userEmail||""}</small></div><button className="logout-button" aria-label="로그아웃" title="로그아웃" onClick={async()=>{await fetch("/api/auth/logout",{method:"POST"});window.location.assign("/login")}}><MoreHorizontal size={18}/></button></div></div></aside>
     <div className="main-wrap"><header><button className="menu-button" onClick={()=>setMobile(true)}><Menu/></button><div className="global-search"><Search size={18}/><input placeholder="기능이나 자료를 검색해 보세요"/><kbd>⌘ K</kbd></div><div className="header-actions"><button className="icon-button" onClick={()=>setNotice(!notice)}><Bell size={19}/><i/></button><span className="header-divider"/><button className="school" onClick={()=>go("/class-management")}><span>{currentClass?`${currentClass.grade}-${currentClass.classNumber}`:"+"}</span><div><small>현재 학급</small><b>{currentClass?`${currentClass.grade}학년 ${currentClass.classNumber}반${currentClass.name?` · ${currentClass.name}`:""}`:"학급을 등록해 주세요"}</b></div><ChevronRight size={15}/></button></div>{notice&&<div className="notice-pop"><b>알림</b><button onClick={()=>setNotice(false)}><X size={15}/></button><p>{userName||"선생님"} 계정으로 안전하게 로그인되어 있어요.</p><small>@{userEmail}</small></div>}</header>
-      <main>{section==="dashboard"&&<Dashboard go={go} userName={userName||userEmail||"선생님"}/>} {section==="operations"&&<ToolsPage kind="operations"/>}{section==="lessons"&&<ToolsPage kind="lessons"/>}{section==="templates"&&<TemplatesPage/>}{section==="workspace"&&<WorkspacePage/>}{section==="help"&&<HelpPage userName={userName||"선생님"} userId={userEmail||""}/>} {section==="messages"&&<MessageGenerator/>}{section==="newsletters"&&<NewsletterGenerator/>}{section==="lesson-plans"&&<LessonPlanGenerator/>}{section==="student-observations"&&<StudentObservationOrganizer/>}{section==="writing-feedback"&&<WritingFeedbackAssistant/>}{section==="multiplication-quiz"&&<MultiplicationQuiz/>}{section==="attendance-assignments"&&<AttendanceAssignmentManager/>}{section==="class-roles"&&<ClassRoleAssignment/>}{section==="class-management"&&<ClassStudentManager/>}{section==="surveys"&&<SurveyManager/>}</main>
+      <main>{section==="dashboard"&&<Dashboard go={go} userName={userName||userEmail||"선생님"}/>} {section==="operations"&&<ToolsPage kind="operations"/>}{section==="lessons"&&<ToolsPage kind="lessons"/>}{section==="templates"&&<TemplatesPage/>}{section==="workspace"&&<WorkspacePage/>}{section==="help"&&<HelpPage userName={userName||"선생님"} userId={userEmail||""}/>} {section==="messages"&&<MessageGenerator/>}{section==="newsletters"&&<NewsletterGenerator/>}{section==="lesson-plans"&&<LessonPlanGenerator/>}{section==="student-observations"&&<StudentObservationOrganizer/>}{section==="writing-feedback"&&<WritingFeedbackAssistant/>}{section==="multiplication-quiz"&&<MultiplicationQuiz/>}{section==="daily-math"&&<DailyMathWorksheet/>}{section==="attendance-assignments"&&<AttendanceAssignmentManager/>}{section==="class-roles"&&<ClassRoleAssignment/>}{section==="class-management"&&<ClassStudentManager/>}{section==="surveys"&&<SurveyManager/>}</main>
     </div>{mobile&&<button className="overlay" onClick={()=>setMobile(false)} aria-label="메뉴 닫기"/>}
   </div>;
 }
