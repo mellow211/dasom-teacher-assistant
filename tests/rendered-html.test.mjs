@@ -1,6 +1,56 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import ts from "typescript";
+
+async function getMultiplicationLogic() {
+  const source = await readFile(new URL("../app/lib/multiplication-quiz.ts", import.meta.url), "utf8");
+  const javascript = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
+  return import(`data:text/javascript;base64,${Buffer.from(javascript).toString("base64")}`);
+}
+
+const settings = { selectedTables: [3, 6], difficulty: "easy", questionCount: 20, timeLimit: 0 };
+
+test("multiplication quiz generates only selected tables with correct answers", async () => {
+  const logic = await getMultiplicationLogic();
+  const problems = logic.generateProblems("table-solo", settings, () => 0.42);
+  assert.equal(problems.length, 20);
+  assert.ok(problems.every((problem) => [3, 6].includes(problem.leftOperand)));
+  assert.ok(problems.every((problem) => problem.rightOperand >= 1 && problem.rightOperand <= 9));
+  assert.ok(problems.every((problem) => problem.correctAnswer === problem.leftOperand * problem.rightOperand));
+  assert.equal(new Set(problems.slice(0, 18).map((problem) => `${problem.leftOperand}-${problem.rightOperand}`)).size, 18);
+});
+
+test("multiplication quiz respects difficulty ranges and mixed balance", async () => {
+  const logic = await getMultiplicationLogic();
+  const cases = { easy: [[2,9],[2,9]], normal: [[10,99],[2,9]], hard: [[100,999],[2,9]], challenge: [[10,99],[10,99]] };
+  for (const [difficulty, [left, right]] of Object.entries(cases)) {
+    const problems = logic.generateProblems("multiplication-solo", {...settings, difficulty, questionCount: 10}, Math.random);
+    assert.ok(problems.every((p) => p.leftOperand >= left[0] && p.leftOperand <= left[1] && p.rightOperand >= right[0] && p.rightOperand <= right[1]));
+  }
+  const mixed = logic.generateProblems("multiplication-solo", {...settings, difficulty:"mixed", questionCount: 30}, Math.random);
+  const counts = Object.values(logic.problemDistribution(mixed));
+  assert.ok(Math.max(...counts) - Math.min(...counts) <= 1);
+});
+
+test("grading, timeout guard, wrong retry, and battle decisions are deterministic", async () => {
+  const logic = await getMultiplicationLogic();
+  const problem = {id:"p",leftOperand:3,rightOperand:4,correctAnswer:12,problemType:"table"};
+  assert.equal(logic.gradeAnswer(problem, 12, 1).isCorrect, true);
+  assert.equal(logic.gradeAnswer(problem, 11, 1).isCorrect, false);
+  assert.equal(logic.resolveAttempt(problem, true, 12, 1, true), null);
+  assert.equal(logic.wrongProblems([logic.gradeAnswer(problem, 11, 1)]).length, 1);
+  const first = logic.buildPlayerResult("A", [logic.gradeAnswer(problem, 12, 3)]);
+  const faster = logic.buildPlayerResult("B", [logic.gradeAnswer(problem, 12, 2)]);
+  assert.equal(logic.decideWinner(first, faster), 2);
+  assert.equal(logic.decideWinner(first, {...first, playerName:"B"}), 0);
+});
+
+test("battle players receive the same problem distribution", async () => {
+  const logic = await getMultiplicationLogic();
+  const [first, second] = logic.generateBattleProblems("multiplication-battle", {...settings, difficulty:"mixed", questionCount:20}, Math.random);
+  assert.deepEqual(logic.problemDistribution(first), logic.problemDistribution(second));
+});
 
 async function getWorker() {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);

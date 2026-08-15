@@ -3,6 +3,7 @@ import { Geist } from "next/font/google";
 import "./globals.css";
 import "./observation.css";
 import "./writing-feedback.css";
+import "./multiplication-quiz.css";
 
 const geist = Geist({ variable: "--font-geist", subsets: ["latin"] });
 
