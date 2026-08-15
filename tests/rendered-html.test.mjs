@@ -266,7 +266,7 @@ test("renders the student observation organizer route with privacy guidance", as
   const response = await worker.fetch(new Request("http://localhost/student-observations", { headers: { accept: "text/html" } }), env, context);
   assert.equal(response.status, 200);
   const html = await response.text();
-  assert.match(html, /학생 관찰 메모 정리기/);
+  assert.match(html, /상담·학생 관찰 기록 정리기/);
   assert.match(html, /민감한 개인정보, 건강정보, 가족정보는 입력하지 마세요/);
   assert.match(html, /로그인한 교사 본인만 조회·수정·삭제/);
 });
