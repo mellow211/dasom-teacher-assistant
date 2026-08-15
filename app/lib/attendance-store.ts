@@ -2,8 +2,9 @@ import { Assignment, AttendanceRecord, ClassRoom, Student, SubmissionRecord } fr
 export class AttendanceStoreError extends Error{constructor(){super("데이터를 저장하지 못했습니다. 입력 내용은 화면에 유지됩니다. 잠시 후 다시 시도해 주세요.");this.name="AttendanceStoreError";}}
 const config=()=>{const url=process.env.SUPABASE_URL,key=process.env.SUPABASE_PUBLISHABLE_KEY,secret=process.env.SUPABASE_OWNER_SECRET;if(!url||!key||!secret||secret.length<32)throw new AttendanceStoreError();return{url,key,secret};};
 async function ownerKey(email:string,secret:string){const e=new TextEncoder(),key=await crypto.subtle.importKey("raw",e.encode(secret),{name:"HMAC",hash:"SHA-256"},false,["sign"]),signed=await crypto.subtle.sign("HMAC",key,e.encode(email.trim().toLowerCase()));return Array.from(new Uint8Array(signed),b=>b.toString(16).padStart(2,"0")).join("");}
-async function auth(email:string){const {url,key,secret}=config();return{url,key,owner:await ownerKey(email,secret)};}
-async function request(email:string,table:string,path="",init:RequestInit={}){const {url,key,owner}=await auth(email);const response=await fetch(`${url}/rest/v1/${table}${path}`,{...init,headers:{apikey:key,"x-owner-key":owner,"Content-Type":"application/json",...(init.headers||{})},cache:"no-store"});if(!response.ok)throw new AttendanceStoreError();return response;}
+export async function attendanceStoreAuth(email:string){const {url,key,secret}=config();return{url,key,owner:await ownerKey(email,secret)};}
+export async function attendanceStoreRequest(email:string,table:string,path="",init:RequestInit={}){const {url,key,owner}=await attendanceStoreAuth(email);const response=await fetch(`${url}/rest/v1/${table}${path}`,{...init,headers:{apikey:key,"x-owner-key":owner,"Content-Type":"application/json",...(init.headers||{})},cache:"no-store"});if(!response.ok)throw new AttendanceStoreError();return response;}
+const auth=attendanceStoreAuth,request=attendanceStoreRequest;
 const baseHeaders={Prefer:"return=representation"};
 export async function loadTracker(email:string){
  const [classes,students,attendance,assignments,submissions]=await Promise.all([

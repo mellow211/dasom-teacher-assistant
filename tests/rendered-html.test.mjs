@@ -115,6 +115,14 @@ test("renders the attendance and assignment manager route", async () => {
   assert.match(html, /학급 정보를 안전하게 불러오는 중입니다/);
 });
 
+test("renders the one-student-one-role assignment route", async () => {
+  const worker = await getWorker();
+  const response = await worker.fetch(new Request("http://localhost/class-roles", { headers: { accept: "text/html" } }), env, context);
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /학급과 역할 정보를 불러오는 중입니다/);
+});
+
 test("renders the message generator route", async () => {
   const worker = await getWorker();
   const response = await worker.fetch(
