@@ -6,6 +6,7 @@ import "./multiplication-quiz.css";
 import "./attendance-assignment.css";
 import "./class-role-assignment.css";
 import "./class-student-manager.css";
+import "./survey.css";
 
 export const metadata: Metadata = {
   title: "다솜쌤 | AI 교사 도우미",

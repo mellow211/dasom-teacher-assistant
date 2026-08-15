@@ -1,0 +1,1 @@
+import {PublicSurveyForm} from "../../components/public-survey-form";export default async function Page({params}:{params:Promise<{slug:string}>}){return <PublicSurveyForm slug={(await params).slug}/>}
