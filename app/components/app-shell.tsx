@@ -87,12 +87,15 @@ function ToolCard({ tool, selected, onClick }: { tool: Tool; selected?: boolean;
   </button>;
 }
 
+const toolRoutes: Record<string, string> = {
+  "학부모 메시지 생성기": "/messages", "가정통신문 생성기": "/newsletters", "상담·학생 관찰 기록 정리": "/student-observations",
+  "설문 만들기·응답 분석": "/surveys", "출석·제출물 관리": "/attendance-assignments", "1인 1역 배정 도우미": "/class-roles",
+  "지도안 생성기": "/lesson-plans", "글쓰기 피드백": "/writing-feedback", "곱셈 퀴즈": "/multiplication-quiz",
+  "일일수학 연산학습지": "/daily-math", "일일영어": "/daily-english", "역사 퀴즈": "/history-quiz",
+};
+
 function openTool(tool: Tool, setSelected: (tool: Tool) => void) {
-  const routes = new Map<Tool, string>([
-    [operationTools[0], "/messages"], [operationTools[1], "/newsletters"], [operationTools[2], "/student-observations"], [operationTools[3], "/surveys"], [operationTools[4], "/attendance-assignments"], [operationTools[5], "/class-roles"],
-    [lessonTools[0], "/lesson-plans"], [lessonTools[5], "/writing-feedback"], [lessonTools[7], "/multiplication-quiz"], [lessonTools[8], "/daily-math"], [lessonTools[9], "/daily-english"], [lessonTools[10], "/history-quiz"],
-  ]);
-  const route = routes.get(tool);
+  const route = toolRoutes[tool.title];
   if (route) window.location.assign(route); else setSelected(tool);
 }
 
@@ -123,6 +126,7 @@ function ToolsPage({ kind }: { kind: "operations" | "lessons" }) {
   const isLesson = kind === "lessons"; const tools = isLesson ? lessonTools : operationTools;
   const categories = isLesson ? ["전체", "공통", "국어", "수학", "통합/사회/과학", "영어", "평가"] : ["전체", "소통", "기록/행정", "학급관리", "분석"];
   const [category, setCategory] = useState("전체"); const [selected, setSelected] = useState(tools[0]);
+  const selectedRoute = toolRoutes[selected.title];
   const visible = category === "전체" ? tools : tools.filter(t => t.category === category || (category === "통합/사회/과학" && t.category === "통합"));
   return <>
     <div className="page-title"><div><span className="eyebrow">{isLesson ? "LESSON ASSISTANT" : "CLASS ASSISTANT"}</span><h1>{isLesson ? "수업 도우미" : "업무·학급 운영 도우미"}</h1><p>{isLesson ? "교과와 학년에 맞는 수업 자료를 쉽고 빠르게 준비하세요." : "반복되는 학급 업무는 줄이고, 아이들에게 더 집중하세요."}</p></div><button className="outline-btn"><Clock3 size={16}/> 최근 작업</button></div>
@@ -130,7 +134,7 @@ function ToolsPage({ kind }: { kind: "operations" | "lessons" }) {
     <div className="tabs">{categories.map(c => <button className={category === c ? "active" : ""} onClick={() => setCategory(c)} key={c}>{c}</button>)}</div>
     <div className="tools-layout">
       <section className="tool-list-section"><div className="section-heading compact"><div><h2>{category === "전체" ? "전체 기능" : category}</h2><p>{visible.length}개의 도구가 있어요.</p></div><div className="view-toggle"><button className="active"><Grid2X2 size={16}/></button><button><Menu size={16}/></button></div></div><div className="tool-grid">{visible.map(t => <ToolCard key={t.title} tool={t} selected={selected.title === t.title} onClick={() => openTool(t, setSelected)}/>)}</div></section>
-      <aside className="detail-card"><span className={`tool-icon large ${selected.color}`}><selected.icon size={26}/></span><span className="eyebrow">{selected.category}</span><h2>{selected.title}</h2><p>{selected.desc}. 선생님이 입력한 내용을 바탕으로 알맞은 초안을 제안합니다.</p><div className="detail-example"><b>이런 내용을 입력해요</b><ul><li><Check size={14}/> {isLesson ? "대상 학년과 교과 정보" : "대상과 기본 정보"}</li><li><Check size={14}/> 전달하고 싶은 핵심 내용</li><li><Check size={14}/> 원하는 말투와 길이</li></ul></div><button className="primary-btn full" disabled={selected !== operationTools[0] && selected !== operationTools[1] && selected !== operationTools[2] && selected !== lessonTools[0] && selected !== lessonTools[5]} onClick={() => window.location.assign(selected === operationTools[0] ? "/messages" : selected === operationTools[1] ? "/newsletters" : selected === operationTools[2] ? "/student-observations" : selected === lessonTools[5] ? "/writing-feedback" : "/lesson-plans")}><Sparkles size={16}/> {selected === operationTools[0] || selected === operationTools[1] || selected === operationTools[2] || selected === lessonTools[0] || selected === lessonTools[5] ? "이 도구 사용하기" : "준비 중"}</button></aside>
+      <aside className="detail-card"><span className={`tool-icon large ${selected.color}`}><selected.icon size={26}/></span><span className="eyebrow">{selected.category}</span><h2>{selected.title}</h2><p>{selected.desc}. 선생님이 입력한 내용을 바탕으로 알맞은 초안을 제안합니다.</p><div className="detail-example"><b>이런 내용을 입력해요</b><ul><li><Check size={14}/> {isLesson ? "대상 학년과 교과 정보" : "대상과 기본 정보"}</li><li><Check size={14}/> 전달하고 싶은 핵심 내용</li><li><Check size={14}/> 원하는 말투와 길이</li></ul></div><button className="primary-btn full" disabled={!selectedRoute} onClick={() => selectedRoute && window.location.assign(selectedRoute)}><Sparkles size={16}/> {selectedRoute ? "이 도구 사용하기" : "준비 중"}</button></aside>
     </div>
   </>;
 }
