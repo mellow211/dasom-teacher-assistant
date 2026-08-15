@@ -123,6 +123,14 @@ test("renders the one-student-one-role assignment route", async () => {
   assert.match(html, /학급과 역할 정보를 불러오는 중입니다/);
 });
 
+test("renders the shared class and student management route", async () => {
+  const worker = await getWorker();
+  const response = await worker.fetch(new Request("http://localhost/class-management", { headers: { accept: "text/html" } }), env, context);
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /학급과 학생 정보를 불러오는 중입니다/);
+});
+
 test("renders the message generator route", async () => {
   const worker = await getWorker();
   const response = await worker.fetch(
