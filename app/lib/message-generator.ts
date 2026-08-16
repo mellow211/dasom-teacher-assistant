@@ -54,6 +54,12 @@ export function validateMessageInput(value: unknown): {
   };
 }
 
+export function isCompleteTeacherMessage(value: string): boolean {
+  const message = value.trim();
+  if (message.length < 20) return false;
+  return /[.!?。！？…][\s"'”’)]*$/.test(message);
+}
+
 export function buildMessagePrompt(input: MessageGeneratorInput): string {
   const sentenceGuide = {
     "짧게": "2~3문장",

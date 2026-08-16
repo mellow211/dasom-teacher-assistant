@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import type { MessageGeneratorInput } from "./message-generator";
-import { buildMessagePrompt } from "./message-generator";
+import { buildMessagePrompt, isCompleteTeacherMessage } from "./message-generator";
 
 export class AiServiceError extends Error {
   constructor(message: string, public readonly status = 500) {
@@ -13,12 +13,20 @@ export async function generateTeacherMessage(
   input: MessageGeneratorInput,
   signal?: AbortSignal,
 ): Promise<string> {
-  return generateAiText(buildMessagePrompt(input), signal);
+  const prompt = buildMessagePrompt(input);
+  const first = await generateAiText(prompt, signal, 2000);
+  if (isCompleteTeacherMessage(first)) return first;
+  const retry = await generateAiText(`${prompt}\n\n[중요] 앞선 응답이 문장 중간에서 끝날 수 있습니다. 마지막 문장까지 완결된 메시지를 처음부터 다시 작성하세요.`, signal, 2000);
+  if (!isCompleteTeacherMessage(retry)) {
+    throw new AiServiceError("메시지가 완성되기 전에 중단되었습니다. 잠시 후 다시 생성해 주세요.", 502);
+  }
+  return retry;
 }
 
 export async function generateAiText(
   prompt: string,
   signal?: AbortSignal,
+  maxOutputTokens = 2000,
 ): Promise<string> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -34,7 +42,7 @@ export async function generateAiText(
         store: false,
         generation_config: {
           thinking_level: "low",
-          max_output_tokens: 800,
+          max_output_tokens: maxOutputTokens,
         },
       },
       signal ? { fetchOptions: { signal } } : undefined,

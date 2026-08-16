@@ -290,6 +290,18 @@ test("keeps the detailed message option selected and avoids padded AI output", a
   assert.match(styles, /message-form \.message-option-grid/);
 });
 
+test("rejects truncated teacher messages before they are saved", async () => {
+  const [{ isCompleteTeacherMessage }, service] = await Promise.all([
+    import("../app/lib/message-generator.ts"),
+    readFile(new URL("../app/lib/ai-service.ts", import.meta.url), "utf8"),
+  ]);
+  assert.equal(isCompleteTeacherMessage("안녕하세요. 준비물"), false);
+  assert.equal(isCompleteTeacherMessage("안녕하세요. 미술 준비물을 챙겨 보내 주시기 바랍니다."), true);
+  assert.match(service, /maxOutputTokens = 2000/);
+  assert.match(service, /isCompleteTeacherMessage\(first\)/);
+  assert.match(service, /isCompleteTeacherMessage\(retry\)/);
+});
+
 test.skip("renders the lesson plan generator route after authentication", async () => {
   const worker = await getWorker();
   const response = await worker.fetch(new Request("http://localhost/lesson-plans", { headers: { accept: "text/html" } }), env, context);
