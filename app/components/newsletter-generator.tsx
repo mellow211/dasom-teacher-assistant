@@ -10,7 +10,7 @@ import {
 
 const initialForm: NewsletterInput = {
   type: "행사 안내", audience: "전체 학생", audienceDetail: "", title: "", coreContent: "",
-  organization: "", sender: "", date: "", time: "", place: "", participants: "", materials: "", cost: "", notes: "",
+  organization: "", sender: "", issuedDate: "", date: "", time: "", place: "", participants: "", materials: "", cost: "", notes: "",
   needsReply: false, replyDeadline: "", replyMethod: "", contact: "", tone: "공식적으로", length: "보통",
 };
 
@@ -61,7 +61,8 @@ export function NewsletterGenerator() {
         {form.audience !== "전체 학생" && <label>대상 상세 *<input value={form.audienceDetail} placeholder={form.audience === "특정 학년" ? "예: 3학년" : form.audience === "특정 학급" ? "예: 3학년 2반" : "안내 대상을 입력해 주세요"} onChange={(e)=>update("audienceDetail",e.target.value)}/><FieldError message={errors.audienceDetail}/></label>}
         <label>제목 <span className="optional">선택 · 비워두면 AI가 생성</span><input value={form.title} placeholder="예: 2026학년도 가을 현장체험학습 안내" onChange={(e)=>update("title",e.target.value)}/></label>
         <label>핵심 안내 내용 *<small className="field-help">확정된 사실과 꼭 전달해야 할 내용을 적어 주세요.</small><textarea value={form.coreContent} maxLength={3000} placeholder="행사 목적, 주요 활동, 학부모 협조 사항 등을 입력해 주세요." onChange={(e)=>update("coreContent",e.target.value)}/><FieldError message={errors.coreContent}/></label>
-        <div className="field-row"><label>학교명 또는 기관명 <span className="optional">선택</span><input value={form.organization} placeholder="예: 서울푸른초등학교" onChange={(e)=>update("organization",e.target.value)}/></label><label>발신자 <span className="optional">선택</span><input value={form.sender} placeholder="예: 3학년 담임교사" onChange={(e)=>update("sender",e.target.value)}/></label></div>
+        <div className="field-row"><label>학교명 또는 기관명 <span className="optional">선택</span><input value={form.organization} placeholder="예: 서울푸른초등학교" onChange={(e)=>update("organization",e.target.value)}/></label><label>발신자 <span className="optional">선택</span><input value={form.sender} placeholder="예: 학교장, 3학년 담임교사" onChange={(e)=>update("sender",e.target.value)}/></label></div>
+        <label>작성일 <span className="optional">선택 · 행사 날짜와 별도</span><input value={form.issuedDate} placeholder="예: 2026년 9월 1일" onChange={(e)=>update("issuedDate",e.target.value)}/></label>
 
         {(showSchedule || showMaterials || showCost) && <><div className="divider"/><div className="panel-head option-head"><div><span className="eyebrow">STEP 2</span><h3>일정 및 세부 정보</h3></div></div></>}
         {showSchedule && <><div className="field-row"><label>날짜 <span className="optional">선택</span><input value={form.date} placeholder="예: 2026년 9월 3일" onChange={(e)=>update("date",e.target.value)}/></label><label>시간 <span className="optional">선택</span><input value={form.time} placeholder="예: 오전 9시~오후 2시" onChange={(e)=>update("time",e.target.value)}/></label></div><div className="field-row"><label>장소 <span className="optional">선택</span><input value={form.place} placeholder="예: 서울숲 체험학습장" onChange={(e)=>update("place",e.target.value)}/></label><label>참여 대상 <span className="optional">선택</span><input value={form.participants} placeholder="예: 3학년 학생 전체" onChange={(e)=>update("participants",e.target.value)}/></label></div></>}

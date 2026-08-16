@@ -11,6 +11,7 @@ export type NewsletterInput = {
   coreContent: string;
   organization?: string;
   sender?: string;
+  issuedDate?: string;
   date?: string;
   time?: string;
   place?: string;
@@ -53,7 +54,7 @@ export function validateNewsletterInput(value: unknown): { data?: NewsletterInpu
     audienceDetail: optional("audienceDetail", 100),
     title: optional("title", 150),
     coreContent: clean(raw.coreContent, 3000),
-    organization: optional("organization", 100), sender: optional("sender", 100),
+    organization: optional("organization", 100), sender: optional("sender", 100), issuedDate: optional("issuedDate", 100),
     date: optional("date", 100), time: optional("time", 100), place: optional("place", 200),
     participants: optional("participants", 200), materials: optional("materials", 500), cost: optional("cost", 100), notes: optional("notes", 1000),
     needsReply: raw.needsReply as boolean,
@@ -64,6 +65,7 @@ export function validateNewsletterInput(value: unknown): { data?: NewsletterInpu
 
 export function buildNewsletterPrompt(input: NewsletterInput): string {
   const references = selectNewsletterReferences(input);
+  const formatGuide = newsletterFormatGuide(input);
   return `다음 입력 정보만 사용하여 학부모에게 실제로 배부할 수 있는 완성된 한국어 가정통신문을 작성하세요.
 
 [입력 정보]
@@ -73,6 +75,7 @@ export function buildNewsletterPrompt(input: NewsletterInput): string {
 - 핵심 안내 내용: ${input.coreContent}
 - 학교명 또는 기관명: ${input.organization || "입력되지 않음"}
 - 발신자: ${input.sender || "입력되지 않음"}
+- 작성일: ${input.issuedDate || "입력되지 않음"}
 - 날짜: ${input.date || "입력되지 않음"}
 - 시간: ${input.time || "입력되지 않음"}
 - 장소: ${input.place || "입력되지 않음"}
@@ -88,6 +91,9 @@ export function buildNewsletterPrompt(input: NewsletterInput): string {
 - 길이: ${input.length}
 
 ${references}
+
+[반드시 지킬 최종 문서 형식]
+${formatGuide}
 
 [작성 원칙]
 - 제목, 학부모 인사말, 안내 목적과 주요 내용, 입력된 세부 정보, 신청 또는 협조 요청, 마무리 인사 순으로 구성하세요.
@@ -105,6 +111,31 @@ ${references}
 - 개인정보 동의에 필요한 목적·항목·보유기간·제공받는 자가 입력되지 않았다면 임의로 완성하지 말고 해당 동의 문구를 생략하세요.
 - 공개 게시될 수 있는 문서이므로 개별 학생이나 학부모를 식별할 수 있는 정보를 포함하지 마세요.
 - 내부 설명, 작성 과정, 주의사항 없이 완성된 가정통신문만 반환하세요.
+- Markdown 문법(**, #, ---, 대괄호 제목), 코드 블록, 이모지, 장식용 구분선을 사용하지 마세요.
+- 세부 정보는 학교 문서에서 일반적으로 쓰는 '1.', '2.' 번호와 필요한 경우 '가.', '나.' 하위 항목으로 정리하세요.
+- 제목은 문서 첫 줄에 한 번만 쓰고, 본문에서 같은 제목을 반복하지 마세요.
+- '날짜'는 행사·활동 날짜이며 작성일로 사용하지 마세요. 문서 하단 작성일은 작성일 입력값이 있을 때만 표시하세요.
 - 간단하게는 핵심 위주, 보통은 일반적인 분량, 자세하게는 입력된 유의사항과 협조 사항을 충분히 포함하세요.`;
+}
+
+function newsletterFormatGuide(input: NewsletterInput): string {
+  const details = input.type === "체험학습 안내"
+    ? "1. 일시\n2. 장소\n3. 대상\n4. 주요 활동 또는 일정\n5. 준비물 및 유의사항\n6. 참가 동의·회신 안내"
+    : input.type === "신청·동의 안내"
+      ? "1. 안내 목적\n2. 대상 및 운영 내용\n3. 신청 기간\n4. 신청 방법\n5. 유의사항 및 문의처"
+      : "1. 안내 개요\n2. 입력된 일정·장소·대상 등 세부 정보\n3. 협조 또는 신청 사항\n4. 유의사항 및 문의처";
+  return `제목\n\n학부모 인사말과 안내 목적을 자연스러운 1~2개 문단으로 작성\n\n${details}\n\n협조에 대한 감사와 마무리 인사\n\n${input.issuedDate ? "작성일" : "작성일은 표시하지 않음"}\n${input.organization ? "학교명 또는 기관명" : "학교명은 표시하지 않음"}\n${input.sender ? "발신자" : "발신자는 표시하지 않음"}\n\n값이 입력되지 않은 번호 항목은 번호까지 포함해 완전히 생략하고 남은 번호를 순서대로 다시 매기세요.`;
+}
+
+export function normalizeNewsletterOutput(value: string): string {
+  return value
+    .replace(/```(?:text|markdown)?\s*/gi, "")
+    .replace(/```/g, "")
+    .replace(/^\s*#{1,6}\s*/gm, "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/^\s*---+\s*$/gm, "")
+    .replace(/^\s*\[([^\]]+)]\s*$/gm, "$1")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 import { selectNewsletterReferences } from "./newsletter-reference-library";

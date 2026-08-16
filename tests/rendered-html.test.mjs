@@ -260,6 +260,14 @@ test("keeps newsletter facts and personal details out of storage and logs", asyn
   assert.match(rules, /입력되지 않은 정보를 추가하지 마세요/);
   assert.match(rules, /완성된 가정통신문만 반환하세요/);
   assert.match(rules, /selectNewsletterReferences/);
+  assert.match(rules, /normalizeNewsletterOutput/);
+  assert.match(rules, /Markdown/);
+  assert.match(rules, /newsletterFormatGuide/);
+  assert.match(rules, /issuedDate/);
+  assert.match(rules, /'날짜'는 행사·활동 날짜/);
+  assert.match(route, /normalizeNewsletterOutput/);
+  assert.match(component, /작성일/);
+  assert.match(component, /행사 날짜와 별도/);
   assert.match(references, /필요한 최소 항목/);
   assert.match(references, /만 14세 미만/);
   assert.match(references, /제3자 제공/);

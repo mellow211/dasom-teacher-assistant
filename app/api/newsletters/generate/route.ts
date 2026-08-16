@@ -1,5 +1,5 @@
 import { AiServiceError, generateAiText } from "../../../lib/ai-service";
-import { buildNewsletterPrompt, validateNewsletterInput } from "../../../lib/newsletter-generator";
+import { buildNewsletterPrompt, normalizeNewsletterOutput, validateNewsletterInput } from "../../../lib/newsletter-generator";
 
 export async function POST(request: Request) {
   let payload: unknown;
@@ -10,7 +10,7 @@ export async function POST(request: Request) {
   if (!validation.data) return Response.json({ error: "필수 입력값을 확인해 주세요.", fields: validation.errors }, { status: 400 });
 
   try {
-    const newsletter = await generateAiText(buildNewsletterPrompt(validation.data), request.signal);
+    const newsletter = normalizeNewsletterOutput(await generateAiText(buildNewsletterPrompt(validation.data), request.signal));
     return Response.json({ newsletter });
   } catch (error) {
     const status = error instanceof AiServiceError ? error.status : 500;
