@@ -20,6 +20,7 @@ export function NewsletterGenerator() {
   const [result, setResult] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState("");
+  const [saveNotice, setSaveNotice] = useState("");
 
   const scheduleTypes = ["행사 안내", "교육활동 안내", "체험학습 안내", "일정 변경 안내"];
   const materialTypes = ["행사 안내", "교육활동 안내", "체험학습 안내", "준비물 안내"];
@@ -35,7 +36,7 @@ export function NewsletterGenerator() {
 
   const generate = async () => {
     const validation = validateNewsletterInput(form);
-    setErrors(validation.errors); setApiError("");
+    setErrors(validation.errors); setApiError(""); setSaveNotice("");
     if (!validation.data) return;
     setIsLoading(true);
     try {
@@ -47,7 +48,9 @@ export function NewsletterGenerator() {
       }
       setResult(payload.newsletter);
       const title = (form.title || "").trim() || payload.newsletter.split("\n").map((x) => x.trim()).find(Boolean) || "가정통신문";
-      fetch("/api/generated-results", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "newsletter", title, content: payload.newsletter }) }).catch(() => {});
+      fetch("/api/generated-results", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "newsletter", title, content: payload.newsletter }) })
+        .then((r) => setSaveNotice(r.ok ? "생성 결과를 내 계정에 저장했어요." : "결과는 만들어졌지만 저장에는 실패했어요. 필요하면 복사해 두세요."))
+        .catch(() => setSaveNotice("결과는 만들어졌지만 저장에는 실패했어요. 필요하면 복사해 두세요."));
     } catch (error) {
       setApiError(error instanceof Error ? error.message : "가정통신문을 생성하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally { setIsLoading(false); }
@@ -82,7 +85,10 @@ export function NewsletterGenerator() {
         <fieldset><legend>길이 *</legend><div className="choice-grid three">{NEWSLETTER_LENGTHS.map(x=><button type="button" key={x} className={form.length===x?"choice active":"choice"} onClick={()=>update("length",x)}>{x}</button>)}</div><FieldError message={errors.length}/></fieldset>
         <button type="button" className="primary-btn generate-message" onClick={generate} disabled={isLoading}>{isLoading?<><LoaderCircle className="spin" size={17}/> 가정통신문을 작성하고 있어요</>:<><Sparkles size={17}/> 가정통신문 생성하기</>}</button>
       </section>
-      <GeneratorResult eyebrow="생성 결과" title="가정통신문 초안" result={result} setResult={setResult} isLoading={isLoading} apiError={apiError} onRegenerate={generate} emptyTitle="아직 생성된 가정통신문이 없어요" emptyDescription={<>왼쪽에서 안내 정보를 입력한 뒤<br/>가정통신문 생성 버튼을 눌러 주세요.</>} editHint="배부하기 전에 날짜, 비용, 연락처 등 세부 정보를 다시 확인해 주세요." resultAriaLabel="생성된 가정통신문 수정"/>
+      <div className="message-output-column">
+        {saveNotice && <div className="save-notice"><Check size={15}/>{saveNotice}</div>}
+        <GeneratorResult eyebrow="생성 결과" title="가정통신문 초안" result={result} setResult={setResult} isLoading={isLoading} apiError={apiError} onRegenerate={generate} emptyTitle="아직 생성된 가정통신문이 없어요" emptyDescription={<>왼쪽에서 안내 정보를 입력한 뒤<br/>가정통신문 생성 버튼을 눌러 주세요.</>} editHint="배부하기 전에 날짜, 비용, 연락처 등 세부 정보를 다시 확인해 주세요." resultAriaLabel="생성된 가정통신문 수정"/>
+      </div>
     </div>
   </>;
 }
