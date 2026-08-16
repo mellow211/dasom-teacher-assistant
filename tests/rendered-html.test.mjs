@@ -313,24 +313,27 @@ test.skip("renders the lesson plan generator route after authentication", async 
 
 test("validates lesson sessions and positive duration", async () => {
   const { validateLessonPlanInput } = await import("../app/lib/lesson-plan-generator.ts");
-  const base = { grade:"3학년", subject:"국어", topic:"중심 생각", achievementStandard:"[4국02-01] 문단과 글의 중심 생각을 파악한다.", currentSession:3, totalSessions:2, durationMinutes:0, studentLevel:"보통" };
+  const base = { grade:"6학년", subject:"수학", semester:"1학기", unit:"받침이 있는 글자", topic:"받침이 있는 낱말 읽기", achievementStandard:"[1국02-01] 글자와 낱말을 소리 내어 읽는다.", currentSession:3, totalSessions:2, durationMinutes:0, studentLevel:"보통", lessonType:"기능 연습형" };
   const validation = validateLessonPlanInput(base);
   assert.equal(validation.data, undefined);
   assert.match(validation.errors.currentSession, /전체 차시보다 클 수 없어요/);
   assert.match(validation.errors.durationMinutes, /1분 이상의 정수/);
+  const fixed = validateLessonPlanInput({ ...base, currentSession:1, durationMinutes:40 });
+  assert.equal(fixed.data.grade, "1학년");
+  assert.equal(fixed.data.subject, "국어");
 });
 
 test("validates lesson plan structure, stage order, time sum, and mixed-level support", async () => {
   const { validateLessonPlanOutput } = await import("../app/lib/lesson-plan-generator.ts");
-  const input = { grade:"3학년", subject:"국어", topic:"중심 생각", achievementStandard:"[4국02-01] 문단과 글의 중심 생각을 파악한다.", currentSession:1, totalSessions:2, durationMinutes:40, studentLevel:"수준 혼합" };
+  const input = { grade:"1학년", subject:"국어", semester:"1학기", unit:"받침이 있는 글자", topic:"받침이 있는 낱말 읽기", achievementStandard:"[1국02-01] 글자와 낱말을 소리 내어 읽는다.", currentSession:1, totalSessions:2, durationMinutes:40, studentLevel:"수준 혼합", lessonType:"기능 연습형" };
   const plan = {
-    title:"중심 생각을 찾는 수업", learningObjectives:["글의 중심 생각을 찾을 수 있다."], teacherMaterials:["칠판"], studentMaterials:["필기도구"],
+    title:"국어과 교수·학습 지도안", lessonType:"기능 연습형", learningObjectives:["받침이 있는 낱말을 소리 내어 읽을 수 있다."], teacherMaterials:["낱말 카드"], studentMaterials:["필기도구"],
     lessonStages:[
-      {stage:"도입",minutes:5,teacherActivities:["질문 제시"],studentActivities:["생각 나누기"],materialsAndNotes:["참여 관찰"]},
-      {stage:"전개",minutes:25,teacherActivities:["활동 안내"],studentActivities:["글 읽고 중심 생각 찾기"],materialsAndNotes:["개별 지원"]},
-      {stage:"정리",minutes:10,teacherActivities:["정리 질문"],studentActivities:["배운 점 말하기"],materialsAndNotes:["형성평가"]},
+      {stage:"도입",learningContent:"이전 학습 떠올리기",minutes:5,teacherActivities:["○ 낱말을 어떻게 읽는지 말해 봅시다."],studentActivities:["- 낱말을 소리 내어 읽습니다."],materialsAndNotes:["▶ 받침 낱말 카드"]},
+      {stage:"전개",learningContent:"받침 낱말 읽기",minutes:30,teacherActivities:["▣ 받침 낱말 읽기"],studentActivities:["- 낱말을 보고 정확하게 읽습니다."],materialsAndNotes:["※ 받침을 손가락으로 짚으며 읽게 합니다."]},
+      {stage:"정리",learningContent:"학습 내용 확인",minutes:5,teacherActivities:["• 오늘 어떤 낱말을 읽었나요?"],studentActivities:["- 읽은 낱말을 한 개 말합니다."],materialsAndNotes:["※ 다양한 답을 허용합니다."]},
     ],
-    assessment:{content:["중심 생각 파악"],method:["관찰"],observableBehaviors:["근거를 들어 중심 생각을 말한다."]},
+    assessment:{content:["받침이 있는 낱말 읽기"],method:["관찰평가"],observableBehaviors:["받침을 빠뜨리지 않고 낱말을 읽는다."],criteria:{high:"도움 없이 받침 낱말을 정확하게 읽는다.",medium:"일부 도움을 받아 대부분의 받침 낱말을 읽는다.",low:"받침을 확인하는 도움을 받아 낱말을 따라 읽는다."},alignmentEvidence:"읽기 목표를 전개에서 연습하고 같은 읽기 행동을 관찰한다."},
     levelSupport:[{level:"기초",support:["문장 틀 제공"]},{level:"보통",support:["기본 활동"]},{level:"심화",support:["근거 비교"]}],
   };
   assert.ok(validateLessonPlanOutput(plan,input));
@@ -339,17 +342,23 @@ test("validates lesson plan structure, stage order, time sum, and mixed-level su
 });
 
 test("uses Gemini structured output and keeps lesson data out of logs", async () => {
-  const [service, rules, route] = await Promise.all([
+  const [service, rules, reference, route] = await Promise.all([
     readFile(new URL("../app/lib/ai-service.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/lesson-plan-generator.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/lesson-plan-reference.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/lesson-plans/generate/route.ts", import.meta.url), "utf8"),
   ]);
   assert.match(service, /response_format/);
   assert.match(service, /application\/json/);
   assert.match(service, /JSON\.parse/);
   assert.doesNotMatch(service + route, /console\.(log|info|debug)/);
-  assert.match(rules, /시간 합계는 반드시/);
-  assert.match(rules, /성취기준을 바꾸거나 새로 만들지 마세요/);
+  assert.match(rules, /시간 합계는 정확히/);
+  assert.match(rules, /입력 성취기준과 단원명을 바꾸지 마세요/);
+  assert.match(rules, /teacherActivities와 studentActivities는 같은 개수/);
+  assert.match(rules, /criteria의 high·medium·low/);
+  assert.match(reference, /구조와 설계 논리만 활용/);
+  assert.match(reference, /교사 활동은 ▣ 주요 활동/);
+  assert.match(reference, /상·중·하 평가 기준/);
 });
 
 test.skip("renders the student observation organizer route after authentication", async () => {

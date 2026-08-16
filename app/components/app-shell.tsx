@@ -49,7 +49,7 @@ const operationTools: Tool[] = [
 ];
 
 const lessonTools: Tool[] = [
-  { title: "지도안 생성기", desc: "성취기준에 맞춘 단계별 수업 흐름", category: "공통", icon: BookOpen, color: "blue", badge: "추천" },
+  { title: "지도안 생성기", desc: "1학년 국어 목표·활동·평가가 연결된 수업 흐름", category: "국어", icon: BookOpen, color: "blue", badge: "추천" },
   { title: "수준별 활동지 생성기", desc: "학급 수준에 맞는 활동지를 빠르게", category: "공통", icon: FileText, color: "mint" },
   { title: "수행평가 생성기", desc: "1학년 국어 과제와 관찰 가능한 채점기준", category: "국어", icon: ClipboardCheck, color: "purple", badge: "NEW" },
   { title: "교과서 받아쓰기 생성기", desc: "교과서 PDF 원문만 사용하는 받아쓰기 학습지", category: "국어", icon: FileText, color: "blue", badge: "NEW" },
