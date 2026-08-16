@@ -200,7 +200,7 @@ test.skip("renders the newsletter generator route after authentication", async (
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /가정통신문 생성기/);
-  assert.match(html, /입력 내용은 저장하지 않아요/);
+  assert.match(html, /생성 결과만 계정에 저장/);
 });
 
 test("rejects an incomplete newsletter request before calling AI", async () => {
@@ -548,4 +548,56 @@ test("requires login for the template API", async () => {
   const response = await worker.fetch(new Request("http://localhost/api/templates"), env, context);
   assert.equal(response.status, 401);
   assert.match((await response.json()).error, /로그인/);
+});
+
+test("keeps generated results account-owned and server-persisted", async () => {
+  const [store, route, migration] = await Promise.all([
+    readFile(new URL("../app/lib/generated-result-store.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/generated-results/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260817000000_generated_results.sql", import.meta.url), "utf8"),
+  ]);
+  assert.doesNotMatch(store + route, /localStorage|sessionStorage|console\.(log|info|debug)/);
+  assert.match(store, /attendanceStoreRequest/);
+  assert.match(route, /getChatGPTUser/);
+  assert.match(migration, /enable row level security/);
+  assert.match(migration, /x-owner-key/);
+  for (const tool of ["newsletter", "lesson-plan", "korean-performance-assessment", "leveled-korean-worksheet"]) {
+    assert.ok(migration.includes(tool));
+  }
+});
+
+test("requires login for the generated results API", async () => {
+  const worker = await getWorker();
+  const response = await worker.fetch(new Request("http://localhost/api/generated-results"), env, context);
+  assert.equal(response.status, 401);
+  assert.match((await response.json()).error, /로그인/);
+});
+
+test("newsletter, lesson plan, performance assessment, and worksheet generators auto-save results and reflect the change in their privacy notes", async () => {
+  const [newsletter, lessonPlan, assessment, worksheet] = await Promise.all([
+    readFile(new URL("../app/components/newsletter-generator.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/lesson-plan-generator.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/korean-performance-assessment-generator.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/leveled-korean-worksheet-generator.tsx", import.meta.url), "utf8"),
+  ]);
+  for (const [source, tool] of [
+    [newsletter, "newsletter"],
+    [lessonPlan, "lesson-plan"],
+    [assessment, "korean-performance-assessment"],
+    [worksheet, "leveled-korean-worksheet"],
+  ]) {
+    assert.match(source, /\/api\/generated-results/);
+    assert.match(source, new RegExp(`tool:\\s*"${tool}"`));
+    assert.match(source, /생성 결과만 계정에 저장/);
+    assert.doesNotMatch(source, /입력 내용은 저장하지 않아요|학생 정보와 결과를 저장하지 않아요|제시문과 결과는 저장하지 않아요/);
+  }
+  assert.match(assessment, /request\("all"\)/);
+});
+
+test("workspace fetches saved generated results and surfaces them alongside templates and messages", async () => {
+  const shell = await readFile(new URL("../app/components/app-shell.tsx", import.meta.url), "utf8");
+  assert.match(shell, /fetch\("\/api\/generated-results"/);
+  assert.match(shell, /generatedResults/);
+  assert.match(shell, /results\.length/);
+  assert.match(shell, /GENERATED_RESULT_ROUTES/);
 });

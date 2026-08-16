@@ -46,13 +46,15 @@ export function NewsletterGenerator() {
         throw new Error(payload.error || "가정통신문을 생성하지 못했습니다.");
       }
       setResult(payload.newsletter);
+      const title = (form.title || "").trim() || payload.newsletter.split("\n").map((x) => x.trim()).find(Boolean) || "가정통신문";
+      fetch("/api/generated-results", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tool: "newsletter", title, content: payload.newsletter }) }).catch(() => {});
     } catch (error) {
       setApiError(error instanceof Error ? error.message : "가정통신문을 생성하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally { setIsLoading(false); }
   };
 
   return <>
-    <div className="page-title message-page-title"><div><span className="eyebrow">FAMILY NEWSLETTER ASSISTANT</span><h1>가정통신문 생성기</h1><p>핵심 내용을 입력하면 학부모에게 배부할 수 있는 공식적인 가정통신문 초안을 작성해 드려요.</p></div><span className="privacy-note"><Check size={15}/> 입력 내용은 저장하지 않아요</span></div>
+    <div className="page-title message-page-title"><div><span className="eyebrow">FAMILY NEWSLETTER ASSISTANT</span><h1>가정통신문 생성기</h1><p>핵심 내용을 입력하면 학부모에게 배부할 수 있는 공식적인 가정통신문 초안을 작성해 드려요.</p></div><span className="privacy-note"><Check size={15}/> 생성 결과만 계정에 저장</span></div>
     <div className="newsletter-reference-notice"><BookOpenCheck/><div><b>공식 학교 문서 형식 참고</b><p>교육청 예시와 여러 초등학교 공개 가정통신문에서 추출한 유형별 구조·문체를 참고합니다. 원문이나 다른 학교의 개인정보는 복사하지 않습니다.</p></div><ShieldCheck/><div><b>2026 개인정보보호 지침 반영</b><p>대전광역시교육청 업무편람 등 첨부 지침을 바탕으로 최소 수집, 동의 항목 구분, 아동 개인정보 보호 원칙을 적용합니다.</p></div></div>
     <div className="message-builder newsletter-builder">
       <section className="form-panel message-form newsletter-form">

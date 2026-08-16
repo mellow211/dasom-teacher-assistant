@@ -54,4 +54,11 @@ export function buildKoreanWorksheetPrompt(input:KoreanWorksheetInput,level:Kore
 
 export function combineWorksheetSets(parts:WorksheetSet[],input:KoreanWorksheetInput):WorksheetSet{const levels=parts.flatMap(x=>x.levels);return{...parts[0],levels,teacherGuide:{commonLearningGoal:input.learningGoal,levelDifferences:parts.flatMap(x=>x.teacherGuide.levelDifferences),teachingTips:[...new Set(parts.flatMap(x=>x.teacherGuide.teachingTips))],answerKey:parts.flatMap(x=>x.teacherGuide.answerKey)}};}
 
+export function formatWorksheetSetText(set:WorksheetSet):string{
+  return [set.title,`학년·교과: ${set.grade} ${set.subject}`,`학기: ${set.semester}`,`단원·차시: ${set.unit} ${set.lesson}`,`성취기준: ${set.achievementStandard}`,`학습 목표: ${set.learningGoal}`,
+  ...set.levels.flatMap(level=>[`\n[${level.level} · ${level.studentTitle}]`,level.shortDescription,level.instructions,...level.items.map((item,i)=>`${i+1}. ${item.prompt}${item.options.length?` (보기: ${item.options.join(" / ")})`:""}`)]),
+  "\n[교사용 지도 가이드]",`공통 학습 목표: ${set.teacherGuide.commonLearningGoal}`,...set.teacherGuide.levelDifferences.map(x=>`- ${x}`),"지도 팁: "+set.teacherGuide.teachingTips.join(" / "),
+  "\n[정답표]",...set.teacherGuide.answerKey.map(a=>`${a.level} ${a.itemId}: ${a.answer}`)].join("\n");
+}
+
 export function printableWorksheetIssues(set:WorksheetSet):string[]{const issues:string[]=[];for(const level of set.levels){if(/(보충|기본|심화|낮은 수준)/.test(level.studentTitle))issues.push(`${level.level} 학생용 제목에 내부 수준명이 포함되어 있습니다.`);const ids=new Set<string>();for(const [index,item] of level.items.entries()){if(!item.prompt.trim())issues.push(`${level.level} ${index+1}번 문제 내용이 비어 있습니다.`);if(ids.has(item.id))issues.push(`${level.level} 문항 번호가 중복되었습니다.`);ids.add(item.id);if(item.options.length&&(!item.correctAnswer||!item.options.includes(item.correctAnswer)))issues.push(`${level.level} ${index+1}번 정답이 보기에 없습니다.`)}}return issues;}

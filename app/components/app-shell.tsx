@@ -29,6 +29,7 @@ import { KoreanPerformanceAssessmentGenerator } from "./korean-performance-asses
 import { TemplateLibrary } from "./template-library";
 import type { TeacherTemplate } from "../lib/template-store";
 import type { SavedMessage } from "../lib/saved-message-store";
+import type { GeneratedResult, GeneratedResultTool } from "../lib/generated-result-store";
 
 type Section = "dashboard" | "operations" | "lessons" | "templates" | "workspace" | "help" | "messages" | "newsletters" | "lesson-plans" | "student-observations" | "writing-feedback" | "leveled-korean-worksheets" | "korean-performance-assessments" | "multiplication-quiz" | "daily-math" | "daily-english" | "history-quiz" | "textbook-dictation" | "attendance-assignments" | "class-roles" | "class-management" | "surveys";
 type Tool = { title: string; desc: string; category: string; icon: React.ElementType; color: string; badge?: string };
@@ -64,12 +65,22 @@ lessonTools.push({ title: "일일수학 연산학습지", desc: "학년과 수�
 lessonTools.push({ title: "일일영어", desc: "확인한 단어와 문장으로 영어 문제지와 정답지를 인쇄", category: "영어", icon: PenLine, color: "purple", badge: "NEW" });
 lessonTools.push({ title: "역사 퀴즈", desc: "일반 역사 또는 선택한 교과서 PDF 범위로 혼자 풀기", category: "통합", icon: BookOpen, color: "orange", badge: "NEW" });
 
-type RecentItem = { id: string; title: string; toolLabel: string; route: string; updatedAt: string; kind: "template" | "message"; isFavorite?: boolean };
+type RecentItem = { id: string; title: string; toolLabel: string; route: string; updatedAt: string; kind: "template" | "message" | "result"; isFavorite?: boolean };
 
-function buildRecentItems(templates: TeacherTemplate[], messages: SavedMessage[]): RecentItem[] {
+const GENERATED_RESULT_ROUTES: Record<GeneratedResultTool, string> = {
+  "newsletter": "/newsletters", "lesson-plan": "/lesson-plans",
+  "korean-performance-assessment": "/korean-performance-assessments", "leveled-korean-worksheet": "/leveled-korean-worksheets",
+};
+const GENERATED_RESULT_LABELS: Record<GeneratedResultTool, string> = {
+  "newsletter": "가정통신문 생성기", "lesson-plan": "지도안 생성기",
+  "korean-performance-assessment": "수행평가 생성기", "leveled-korean-worksheet": "수준별 활동지 생성기",
+};
+
+function buildRecentItems(templates: TeacherTemplate[], messages: SavedMessage[], results: GeneratedResult[]): RecentItem[] {
   const templateItems: RecentItem[] = templates.map(t => ({ id: `template-${t.id}`, title: t.title, toolLabel: `템플릿 · ${t.resourceType}`, route: "/templates", updatedAt: t.updatedAt, kind: "template", isFavorite: t.isFavorite }));
   const messageItems: RecentItem[] = messages.map(m => ({ id: `message-${m.id}`, title: m.studentName ? `${m.studentName} 학생 관련 메시지` : `${m.recipient} 대상 메시지`, toolLabel: "학부모 메시지 생성기", route: "/messages", updatedAt: m.updatedAt, kind: "message" }));
-  return [...templateItems, ...messageItems].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  const resultItems: RecentItem[] = results.map(r => ({ id: `result-${r.id}`, title: r.title, toolLabel: GENERATED_RESULT_LABELS[r.tool], route: GENERATED_RESULT_ROUTES[r.tool], updatedAt: r.updatedAt, kind: "result" }));
+  return [...templateItems, ...messageItems, ...resultItems].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
 function Select({ children, wide = false }: { children: React.ReactNode; wide?: boolean }) {
@@ -116,7 +127,8 @@ function timeAgo(iso: string): string {
 function RecentList({ items, go, loading, emptyText }: { items: RecentItem[]; go: (href: string) => void; loading: boolean; emptyText: string }) {
   if (loading) return <p className="recent-list-status"><LoaderCircle className="spin" size={15} /> 불러오는 중이에요.</p>;
   if (!items.length) return <p className="recent-list-status">{emptyText}</p>;
-  return <div className="recent-list">{items.map((item, i) => <button key={item.id} onClick={() => go(item.route)}><span className={`file-icon f${i % 3}`}><FileText size={18} /></span><span><b>{item.title}</b><small>{item.toolLabel} · {timeAgo(item.updatedAt)}</small></span><span className="subject-badge">{item.kind === "template" ? "템플릿" : "메시지"}</span><ChevronRight size={18} /></button>)}</div>;
+  const badgeLabel = { template: "템플릿", message: "메시지", result: "생성 결과" } as const;
+  return <div className="recent-list">{items.map((item, i) => <button key={item.id} onClick={() => go(item.route)}><span className={`file-icon f${i % 3}`}><FileText size={18} /></span><span><b>{item.title}</b><small>{item.toolLabel} · {timeAgo(item.updatedAt)}</small></span><span className="subject-badge">{badgeLabel[item.kind]}</span><ChevronRight size={18} /></button>)}</div>;
 }
 
 function Dashboard({ go, userName, recentItems, activityLoading }: { go: (href: string) => void; userName: string; recentItems: RecentItem[]; activityLoading: boolean }) {
@@ -155,16 +167,20 @@ function ToolsPage({ kind }: { kind: "operations" | "lessons" }) {
   </>;
 }
 
-function WorkspacePage({ go, templates, messages, recentItems, activityLoading }: { go: (href: string) => void; templates: TeacherTemplate[]; messages: SavedMessage[]; recentItems: RecentItem[]; activityLoading: boolean }) {
+function WorkspacePage({ go, templates, messages, results, recentItems, activityLoading }: { go: (href: string) => void; templates: TeacherTemplate[]; messages: SavedMessage[]; results: GeneratedResult[]; recentItems: RecentItem[]; activityLoading: boolean }) {
   const favorites = templates.filter(t => t.isFavorite);
   const recentActivityCount = recentItems.filter(item => Date.now() - new Date(item.updatedAt).getTime() <= 7 * 24 * 60 * 60 * 1000).length;
+  const savedResultItems: RecentItem[] = [
+    ...templates.map(t => ({ id: `template-${t.id}`, title: t.title, toolLabel: t.scope, route: "/templates", updatedAt: t.updatedAt, kind: "template" as const })),
+    ...results.map(r => ({ id: `result-${r.id}`, title: r.title, toolLabel: GENERATED_RESULT_LABELS[r.tool], route: GENERATED_RESULT_ROUTES[r.tool], updatedAt: r.updatedAt, kind: "result" as const })),
+  ].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   return <><div className="page-title"><div><span className="eyebrow">MY WORKSPACE</span><h1>내 작업공간</h1><p>최근 작업과 즐겨찾기 자료를 편리하게 관리하세요.</p></div><button className="primary-btn" onClick={()=>go("/templates")}><Plus size={17}/> 새 템플릿 만들기</button></div>
-  <div className="stats-row">{[["최근 7일 작업",String(recentActivityCount),Clock3,"blue"],["즐겨찾기 템플릿",String(favorites.length),Heart,"orange"],["저장한 메시지",String(messages.length),Save,"mint"],["내 템플릿",String(templates.length),LayoutTemplate,"purple"]].map(([a,b,I,c])=>{const Icon=I as React.ElementType;return <div className="stat-card" key={a as string}><span className={`tool-icon ${c}`}><Icon size={20}/></span><span><small>{a as string}</small><b>{b as string}</b></span></div>})}</div>
+  <div className="stats-row">{[["최근 7일 작업",String(recentActivityCount),Clock3,"blue"],["즐겨찾기 템플릿",String(favorites.length),Heart,"orange"],["저장한 메시지",String(messages.length),Save,"mint"],["저장한 생성 결과물",String(results.length),Sparkles,"purple"],["내 템플릿",String(templates.length),LayoutTemplate,"purple"]].map(([a,b,I,c])=>{const Icon=I as React.ElementType;return <div className="stat-card" key={a as string}><span className={`tool-icon ${c}`}><Icon size={20}/></span><span><small>{a as string}</small><b>{b as string}</b></span></div>})}</div>
   <div className="workspace-layout">
-    <section className="card"><div className="card-head"><div><h2>이어서 작업하기</h2><p>최근 저장한 메시지와 템플릿이에요.</p></div></div><RecentList items={recentItems} go={go} loading={activityLoading} emptyText="아직 저장한 자료가 없어요. 도구를 사용하고 결과를 저장해 보세요."/></section>
+    <section className="card"><div className="card-head"><div><h2>이어서 작업하기</h2><p>최근 저장한 메시지, 생성 결과, 템플릿이에요.</p></div></div><RecentList items={recentItems} go={go} loading={activityLoading} emptyText="아직 저장한 자료가 없어요. 도구를 사용하고 결과를 저장해 보세요."/></section>
     <section className="card folders"><div className="card-head"><div><h2>즐겨찾기 템플릿</h2><p>별표로 표시해 둔 템플릿이에요.</p></div><button className="text-btn" onClick={()=>go("/templates")}>전체 보기</button></div>{activityLoading ? <p className="recent-list-status"><LoaderCircle className="spin" size={15}/> 불러오는 중이에요.</p> : favorites.length ? favorites.slice(0,5).map((t,i)=><button key={t.id} onClick={()=>go("/templates")}><span className={`folder f${i%3}`}><Star size={18} fill="currentColor"/></span><span><b>{t.title}</b><small>{t.resourceType} · {t.grade}</small></span><ChevronRight size={17}/></button>) : <p className="recent-list-status">템플릿 보관함에서 별 아이콘을 눌러 즐겨찾기에 추가해 보세요.</p>}</section>
   </div>
-  <section className="card empty-card"><div className="card-head"><div><h2>저장한 결과물</h2><p>내 계정에 저장한 템플릿이 표시됩니다.</p></div>{templates.length>0 && <button className="text-btn" onClick={()=>go("/templates")}>전체 보기</button>}</div>{activityLoading ? <p className="recent-list-status"><LoaderCircle className="spin" size={15}/> 불러오는 중이에요.</p> : templates.length ? <div className="recent-list">{templates.slice(0,5).map((t,i)=><button key={t.id} onClick={()=>go("/templates")}><span className={`file-icon f${i%3}`}><FileText size={18}/></span><span><b>{t.title}</b><small>{t.resourceType} · {timeAgo(t.updatedAt)}</small></span><span className="subject-badge">{t.scope}</span><ChevronRight size={18}/></button>)}</div> : <EmptyState onCreate={()=>go("/templates")}/>}</section></>;
+  <section className="card empty-card"><div className="card-head"><div><h2>저장한 결과물</h2><p>내 계정에 저장한 템플릿과 생성 결과가 표시됩니다.</p></div>{templates.length+results.length>0 && <button className="text-btn" onClick={()=>go("/templates")}>전체 보기</button>}</div>{activityLoading ? <p className="recent-list-status"><LoaderCircle className="spin" size={15}/> 불러오는 중이에요.</p> : savedResultItems.length ? <div className="recent-list">{savedResultItems.slice(0,5).map((item,i)=><button key={item.id} onClick={()=>go(item.route)}><span className={`file-icon f${i%3}`}><FileText size={18}/></span><span><b>{item.title}</b><small>{item.toolLabel} · {timeAgo(item.updatedAt)}</small></span><span className="subject-badge">{item.kind==="template"?"템플릿":"생성 결과"}</span><ChevronRight size={18}/></button>)}</div> : <EmptyState onCreate={()=>go("/templates")}/>}</section></>;
 }
 
 function HelpPage({userName,userId}:{userName:string;userId:string}) {
@@ -182,23 +198,26 @@ export function AppShell({ section: raw, userEmail, userName }: { section: strin
   const [currentClass, setCurrentClass] = useState<{grade:number;classNumber:number;name?:string}|null>(null);
   const [templates, setTemplates] = useState<TeacherTemplate[]>([]);
   const [messages, setMessages] = useState<SavedMessage[]>([]);
+  const [generatedResults, setGeneratedResults] = useState<GeneratedResult[]>([]);
   const [activityLoading, setActivityLoading] = useState(true);
   useEffect(()=>{let active=true;fetch("/api/attendance-assignments",{cache:"no-store"}).then(r=>r.ok?r.json():null).then((data)=>{const result=data as {classes?:{grade:number;classNumber:number;name?:string}[]}|null;if(active)setCurrentClass(result?.classes?.[0]||null)}).catch(()=>undefined);return()=>{active=false}},[]);
   useEffect(()=>{let active=true;Promise.all([
     fetch("/api/templates",{cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null),
     fetch("/api/messages",{cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null),
-  ]).then(([templatePayload,messagePayload])=>{
+    fetch("/api/generated-results",{cache:"no-store"}).then(r=>r.ok?r.json():null).catch(()=>null),
+  ]).then(([templatePayload,messagePayload,resultPayload])=>{
     if(!active)return;
     setTemplates((templatePayload as {templates?:TeacherTemplate[]}|null)?.templates||[]);
     setMessages((messagePayload as {messages?:SavedMessage[]}|null)?.messages||[]);
+    setGeneratedResults((resultPayload as {results?:GeneratedResult[]}|null)?.results||[]);
     setActivityLoading(false);
   });return()=>{active=false}},[]);
-  const recentItems = buildRecentItems(templates, messages);
+  const recentItems = buildRecentItems(templates, messages, generatedResults);
   const go = (href:string) => { window.location.href = href; };
   return <div className="app-shell">
     <aside className={`sidebar ${mobile ? "open" : ""}`}><div className="brand"><span className="logo-mark"><Sparkles size={21}/></span><span><b>다솜쌤</b><small>AI 교사 도우미</small></span><button onClick={()=>setMobile(false)} className="mobile-close"><X/></button></div><nav>{nav.map(n=>{const active=section===n.id || ((section==="messages" || section==="newsletters" || section==="student-observations" || section==="attendance-assignments" || section==="class-roles" || section==="surveys") && n.id==="operations") || ((section==="lesson-plans" || section==="writing-feedback" || section==="leveled-korean-worksheets" || section==="korean-performance-assessments" || section==="multiplication-quiz") && n.id==="lessons");return <a key={n.id} href={n.href} className={`${active?"active":""} ${n.id==="class-management"?"standalone-nav":""}`}><n.icon size={19}/><span>{n.label}</span>{n.id==="lessons"&&<em>NEW</em>}</a>})}</nav><div className="side-bottom"><a href="/help" className={section==="help"?"active":""}><CircleHelp size={19}/>설정·도움말</a><div className="support"><span><Sparkles size={17}/></span><b>무엇을 도와드릴까요?</b><p>사용 중 궁금한 점을<br/>편하게 알려주세요.</p><button>도움말 보기</button></div><div className="profile"><span>{(userName||userEmail||"교").slice(0,1)}</span><div><b>{userName||"로그인한 교사"}</b><small>{userEmail||""}</small></div><button className="logout-button" aria-label="로그아웃" title="로그아웃" onClick={async()=>{await fetch("/api/auth/logout",{method:"POST"});window.location.assign("/login")}}><MoreHorizontal size={18}/></button></div></div></aside>
     <div className="main-wrap"><header><button className="menu-button" onClick={()=>setMobile(true)}><Menu/></button><div className="global-search"><Search size={18}/><input placeholder="기능이나 자료를 검색해 보세요"/><kbd>⌘ K</kbd></div><div className="header-actions"><button className="icon-button" onClick={()=>setNotice(!notice)}><Bell size={19}/><i/></button><span className="header-divider"/><button className="school" onClick={()=>go("/class-management")}><span>{currentClass?`${currentClass.grade}-${currentClass.classNumber}`:"+"}</span><div><small>현재 학급</small><b>{currentClass?`${currentClass.grade}학년 ${currentClass.classNumber}반${currentClass.name?` · ${currentClass.name}`:""}`:"학급을 등록해 주세요"}</b></div><ChevronRight size={15}/></button></div>{notice&&<div className="notice-pop"><b>알림</b><button onClick={()=>setNotice(false)}><X size={15}/></button><p>{userName||"선생님"} 계정으로 안전하게 로그인되어 있어요.</p><small>@{userEmail}</small></div>}</header>
-      <main>{section==="dashboard"&&<Dashboard go={go} userName={userName||userEmail||"선생님"} recentItems={recentItems} activityLoading={activityLoading}/>} {section==="operations"&&<ToolsPage kind="operations"/>}{section==="lessons"&&<ToolsPage kind="lessons"/>}{section==="templates"&&<TemplateLibrary/>}{section==="workspace"&&<WorkspacePage go={go} templates={templates} messages={messages} recentItems={recentItems} activityLoading={activityLoading}/>}{section==="help"&&<HelpPage userName={userName||"선생님"} userId={userEmail||""}/>} {section==="messages"&&<MessageGenerator/>}{section==="newsletters"&&<NewsletterGenerator/>}{section==="lesson-plans"&&<LessonPlanGenerator/>}{section==="student-observations"&&<StudentObservationOrganizer/>}{section==="writing-feedback"&&<WritingFeedbackAssistant/>}{section==="leveled-korean-worksheets"&&<LeveledKoreanWorksheetGenerator/>}{section==="korean-performance-assessments"&&<KoreanPerformanceAssessmentGenerator/>}{section==="multiplication-quiz"&&<MultiplicationQuiz/>}{section==="daily-math"&&<DailyMathWorksheet/>}{section==="daily-english"&&<DailyEnglishWorksheet/>}{section==="history-quiz"&&<HistoryQuiz/>}{section==="textbook-dictation"&&<TextbookDictation/>}{section==="attendance-assignments"&&<AttendanceAssignmentManager/>}{section==="class-roles"&&<ClassRoleAssignment/>}{section==="class-management"&&<ClassStudentManager/>}{section==="surveys"&&<SurveyManager/>}</main>
+      <main>{section==="dashboard"&&<Dashboard go={go} userName={userName||userEmail||"선생님"} recentItems={recentItems} activityLoading={activityLoading}/>} {section==="operations"&&<ToolsPage kind="operations"/>}{section==="lessons"&&<ToolsPage kind="lessons"/>}{section==="templates"&&<TemplateLibrary/>}{section==="workspace"&&<WorkspacePage go={go} templates={templates} messages={messages} results={generatedResults} recentItems={recentItems} activityLoading={activityLoading}/>}{section==="help"&&<HelpPage userName={userName||"선생님"} userId={userEmail||""}/>} {section==="messages"&&<MessageGenerator/>}{section==="newsletters"&&<NewsletterGenerator/>}{section==="lesson-plans"&&<LessonPlanGenerator/>}{section==="student-observations"&&<StudentObservationOrganizer/>}{section==="writing-feedback"&&<WritingFeedbackAssistant/>}{section==="leveled-korean-worksheets"&&<LeveledKoreanWorksheetGenerator/>}{section==="korean-performance-assessments"&&<KoreanPerformanceAssessmentGenerator/>}{section==="multiplication-quiz"&&<MultiplicationQuiz/>}{section==="daily-math"&&<DailyMathWorksheet/>}{section==="daily-english"&&<DailyEnglishWorksheet/>}{section==="history-quiz"&&<HistoryQuiz/>}{section==="textbook-dictation"&&<TextbookDictation/>}{section==="attendance-assignments"&&<AttendanceAssignmentManager/>}{section==="class-roles"&&<ClassRoleAssignment/>}{section==="class-management"&&<ClassStudentManager/>}{section==="surveys"&&<SurveyManager/>}</main>
     </div><ContextualHelp section={section}/>{mobile&&<button className="overlay" onClick={()=>setMobile(false)} aria-label="메뉴 닫기"/>}
   </div>;
 }
