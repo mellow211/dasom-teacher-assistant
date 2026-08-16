@@ -1,19 +1,15 @@
-export const MESSAGE_TYPES = ["문의 답변", "상황별 안내"] as const;
 export const RECIPIENTS = ["학부모", "학생"] as const;
 export const TONES = ["정중하게", "부드럽게", "간결하게"] as const;
 export const LENGTHS = ["짧게", "보통", "자세하게"] as const;
 
-export type MessageType = (typeof MESSAGE_TYPES)[number];
 export type MessageRecipient = (typeof RECIPIENTS)[number];
 export type MessageTone = (typeof TONES)[number];
 export type MessageLength = (typeof LENGTHS)[number];
 
 export type MessageGeneratorInput = {
-  messageType: MessageType;
   recipient: MessageRecipient;
   studentName?: string;
-  facts: string;
-  request: string;
+  content: string;
   deadline?: string;
   tone: MessageTone;
   length: MessageLength;
@@ -29,22 +25,18 @@ export function validateMessageInput(value: unknown): {
   errors: ValidationErrors;
 } {
   if (!value || typeof value !== "object") {
-    return { errors: { facts: "입력 내용을 확인해 주세요." } };
+    return { errors: { content: "입력 내용을 확인해 주세요." } };
   }
 
   const raw = value as Record<string, unknown>;
   const errors: ValidationErrors = {};
-  const messageType = raw.messageType;
-  if (!includes(MESSAGE_TYPES, messageType)) errors.messageType = "메시지 유형을 선택해 주세요.";
   if (!includes(RECIPIENTS, raw.recipient)) errors.recipient = "수신 대상을 선택해 주세요.";
-  if (typeof raw.facts !== "string" || !raw.facts.trim()) errors.facts = "교사가 확인한 사실을 입력해 주세요.";
-  if (typeof raw.request !== "string" || !raw.request.trim()) errors.request = "전달하거나 요청할 내용을 입력해 주세요.";
+  if (typeof raw.content !== "string" || !raw.content.trim()) errors.content = "전달할 상황과 내용을 입력해 주세요.";
   if (!includes(TONES, raw.tone)) errors.tone = "말투를 선택해 주세요.";
   if (!includes(LENGTHS, raw.length)) errors.length = "길이를 선택해 주세요.";
 
   const studentName = typeof raw.studentName === "string" ? raw.studentName.trim().slice(0, 40) : "";
-  const facts = typeof raw.facts === "string" ? raw.facts.trim().slice(0, 2000) : "";
-  const request = typeof raw.request === "string" ? raw.request.trim().slice(0, 2000) : "";
+  const content = typeof raw.content === "string" ? raw.content.trim().slice(0, 3000) : "";
   const deadline = typeof raw.deadline === "string" ? raw.deadline.trim().slice(0, 80) : "";
 
   if (Object.keys(errors).length > 0) return { errors };
@@ -52,11 +44,9 @@ export function validateMessageInput(value: unknown): {
   return {
     errors,
     data: {
-      messageType: messageType as MessageType,
       recipient: raw.recipient as MessageRecipient,
       studentName: studentName || undefined,
-      facts,
-      request,
+      content,
       deadline: deadline || undefined,
       tone: raw.tone as MessageTone,
       length: raw.length as MessageLength,
@@ -74,11 +64,9 @@ export function buildMessagePrompt(input: MessageGeneratorInput): string {
   return `다음 정보를 바탕으로 교사가 바로 보낼 수 있는 한국어 메시지를 작성하세요.
 
 [입력 정보]
-- 메시지 유형: ${input.messageType}
 - 수신 대상: ${input.recipient}
 - 학생 이름 또는 호칭: ${input.studentName || "입력되지 않음"}
-- 교사가 확인한 사실: ${input.facts}
-- 전달 내용 또는 요청 사항: ${input.request}
+- 전달할 상황과 내용: ${input.content}
 - 날짜 또는 제출 기한: ${input.deadline || "입력되지 않음"}
 - 말투: ${input.tone}
 - 길이: ${input.length} (${sentenceGuide})

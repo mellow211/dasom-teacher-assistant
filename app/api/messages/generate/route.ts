@@ -1,5 +1,7 @@
 import { AiServiceError, generateTeacherMessage } from "../../../lib/ai-service";
+import { getChatGPTUser } from "../../../chatgpt-auth";
 import { validateMessageInput } from "../../../lib/message-generator";
+import { createSavedMessage } from "../../../lib/saved-message-store";
 
 export async function POST(request: Request) {
   let payload: unknown;
@@ -17,9 +19,17 @@ export async function POST(request: Request) {
     );
   }
 
+  const user = await getChatGPTUser();
+  if (!user) return Response.json({ error: "로그인 후 이용해 주세요." }, { status: 401 });
+
   try {
     const message = await generateTeacherMessage(validation.data, request.signal);
-    return Response.json({ message });
+    const savedMessage = await createSavedMessage(user.email, {
+      recipient: validation.data.recipient,
+      studentName: validation.data.studentName,
+      message,
+    });
+    return Response.json({ message, savedMessage });
   } catch (error) {
     const status = error instanceof AiServiceError ? error.status : 500;
     const message = error instanceof AiServiceError

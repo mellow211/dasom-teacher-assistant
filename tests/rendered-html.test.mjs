@@ -166,7 +166,8 @@ test.skip("renders the message generator route after authentication", async () =
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /메시지 생성기/);
-  assert.match(html, /입력 내용은 저장하지 않아요/);
+  assert.match(html, /생성 결과만 계정에 저장/);
+  assert.doesNotMatch(html, /메시지 유형/);
   assert.doesNotMatch(html, /세부 상황/);
 });
 
@@ -176,7 +177,7 @@ test("rejects an incomplete message request before calling AI", async () => {
     new Request("http://localhost/api/messages/generate", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ messageType: "문의 답변" }),
+      body: JSON.stringify({ recipient: "학부모" }),
     }),
     env,
     context,
@@ -185,8 +186,7 @@ test("rejects an incomplete message request before calling AI", async () => {
   assert.equal(response.status, 400);
   const payload = await response.json();
   assert.equal(payload.error, "필수 입력값을 확인해 주세요.");
-  assert.ok(payload.fields.facts);
-  assert.ok(payload.fields.request);
+  assert.ok(payload.fields.content);
 });
 
 test.skip("renders the newsletter generator route after authentication", async () => {
@@ -223,10 +223,12 @@ test("rejects an incomplete newsletter request before calling AI", async () => {
 });
 
 test("keeps message privacy and writing rules in the server service", async () => {
-  const [service, rules, route] = await Promise.all([
+  const [service, rules, route, store, migration] = await Promise.all([
     readFile(new URL("../app/lib/ai-service.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/message-generator.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/messages/generate/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/saved-message-store.ts", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260816010000_saved_teacher_messages.sql", import.meta.url), "utf8"),
   ]);
 
   assert.match(service, /process\.env\.GEMINI_API_KEY/);
@@ -237,6 +239,11 @@ test("keeps message privacy and writing rules in the server service", async () =
   assert.match(rules, /다른 학생의 이름이나 정보를 포함하지 마세요/);
   assert.match(rules, /2~3문장/);
   assert.match(rules, /5~7문장/);
+  assert.doesNotMatch(rules, /messageType|MESSAGE_TYPES/);
+  assert.match(store, /attendanceStoreRequest/);
+  assert.match(migration, /enable row level security/);
+  assert.match(migration, /x-owner-key/);
+  assert.doesNotMatch(service + route + store, /console\.(log|info|debug)/);
 });
 
 test("keeps newsletter facts and personal details out of storage and logs", async () => {

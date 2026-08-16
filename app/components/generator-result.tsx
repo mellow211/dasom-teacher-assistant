@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertCircle, Check, Copy, FileText, LoaderCircle, RefreshCw } from "lucide-react";
+import { AlertCircle, Check, Copy, FileText, LoaderCircle, RefreshCw, Save } from "lucide-react";
 
 type GeneratorResultProps = {
   eyebrow: string;
@@ -15,6 +15,9 @@ type GeneratorResultProps = {
   emptyDescription: React.ReactNode;
   editHint: string;
   resultAriaLabel: string;
+  onSave?: () => void;
+  isSaving?: boolean;
+  saveLabel?: string;
 };
 
 export function FieldError({ message }: { message?: string }) {
@@ -23,7 +26,7 @@ export function FieldError({ message }: { message?: string }) {
 
 export function GeneratorResult({
   eyebrow, title, result, setResult, isLoading, apiError, onRegenerate,
-  emptyTitle, emptyDescription, editHint, resultAriaLabel,
+  emptyTitle, emptyDescription, editHint, resultAriaLabel, onSave, isSaving = false, saveLabel = "변경 내용 저장",
 }: GeneratorResultProps) {
   const [copied, setCopied] = useState(false);
 
@@ -44,7 +47,7 @@ export function GeneratorResult({
     {result ? <>
       <textarea className="editable-result" value={result} onChange={(event) => setResult(event.target.value)} aria-label={resultAriaLabel} />
       <p className="edit-hint">{editHint}</p>
-      <div className="preview-actions message-actions"><button className="ghost-btn" onClick={copyResult}>{copied ? <><Check size={16} /> 복사 완료</> : <><Copy size={16} /> 전체 내용 복사</>}</button><button className="primary-btn" onClick={onRegenerate} disabled={isLoading}>{isLoading ? <LoaderCircle className="spin" size={16} /> : <RefreshCw size={16} />} 다시 생성</button></div>
+      <div className="preview-actions message-actions"><button className="ghost-btn" onClick={copyResult}>{copied ? <><Check size={16} /> 복사 완료</> : <><Copy size={16} /> 전체 내용 복사</>}</button>{onSave && <button className="ghost-btn" onClick={onSave} disabled={isSaving}>{isSaving ? <LoaderCircle className="spin" size={16} /> : <Save size={16} />}{saveLabel}</button>}<button className="primary-btn" onClick={onRegenerate} disabled={isLoading}>{isLoading ? <LoaderCircle className="spin" size={16} /> : <RefreshCw size={16} />} 다시 생성</button></div>
     </> : <div className="message-empty"><span><FileText size={28} /></span><b>{emptyTitle}</b><p>{emptyDescription}</p><div><span>1</span>정보 입력<span>2</span>문서 설정<span>3</span>결과 수정</div></div>}
   </section>;
 }
