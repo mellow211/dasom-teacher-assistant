@@ -9,6 +9,7 @@ import "./history-quiz.css";
 import "./textbook-dictation.css";
 import "./attendance-assignment.css";
 import "./class-role-assignment.css";
+import "./class-role-fixes.css";
 import "./class-student-manager.css";
 import "./survey.css";
 
