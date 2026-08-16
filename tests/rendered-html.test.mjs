@@ -324,7 +324,7 @@ test("validates lesson sessions and positive duration", async () => {
 });
 
 test("validates lesson plan structure, stage order, time sum, and mixed-level support", async () => {
-  const { validateLessonPlanOutput } = await import("../app/lib/lesson-plan-generator.ts");
+  const { normalizeLessonPlanOutput, validateLessonPlanOutput } = await import("../app/lib/lesson-plan-generator.ts");
   const input = { grade:"1학년", subject:"국어", semester:"1학기", unit:"받침이 있는 글자", topic:"받침이 있는 낱말 읽기", achievementStandard:"[1국02-01] 글자와 낱말을 소리 내어 읽는다.", currentSession:1, totalSessions:2, durationMinutes:40, studentLevel:"수준 혼합", lessonType:"기능 연습형" };
   const plan = {
     title:"국어과 교수·학습 지도안", lessonType:"기능 연습형", learningObjectives:["받침이 있는 낱말을 소리 내어 읽을 수 있다."], teacherMaterials:["낱말 카드"], studentMaterials:["필기도구"],
@@ -339,6 +339,14 @@ test("validates lesson plan structure, stage order, time sum, and mixed-level su
   assert.ok(validateLessonPlanOutput(plan,input));
   plan.lessonStages[1].minutes = 24;
   assert.equal(validateLessonPlanOutput(plan,input), null);
+  plan.lessonStages.forEach((stage) => {
+    stage.teacherActivities = stage.teacherActivities.map(x => x.replace(/^[▣○•]\s*/, ""));
+    stage.studentActivities = stage.studentActivities.map(x => x.replace(/^-\s*/, ""));
+    stage.materialsAndNotes = stage.materialsAndNotes.map(x => x.replace(/^[▶※]\s*/, ""));
+  });
+  const normalized = normalizeLessonPlanOutput(plan,input);
+  assert.ok(validateLessonPlanOutput(normalized,input));
+  assert.equal(normalized.lessonStages.reduce((sum,stage)=>sum+stage.minutes,0),40);
 });
 
 test("uses Gemini structured output and keeps lesson data out of logs", async () => {

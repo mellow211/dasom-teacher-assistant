@@ -1,5 +1,5 @@
 import { AiServiceError, generateStructuredAiData } from "../../../lib/ai-service";
-import { buildLessonPlanPrompt, lessonPlanJsonSchema, validateLessonPlanInput, validateLessonPlanOutput } from "../../../lib/lesson-plan-generator";
+import { buildLessonPlanPrompt, lessonPlanJsonSchema, normalizeLessonPlanOutput, validateLessonPlanInput, validateLessonPlanOutput } from "../../../lib/lesson-plan-generator";
 
 export async function POST(request: Request) {
   let payload: unknown;
@@ -9,7 +9,7 @@ export async function POST(request: Request) {
   if (!validation.data) return Response.json({ error: "필수 입력값을 확인해 주세요.", fields: validation.errors }, { status: 400 });
   const input = validation.data;
   try {
-    const create = () => generateStructuredAiData(buildLessonPlanPrompt(input), lessonPlanJsonSchema, value => validateLessonPlanOutput(value,input), request.signal, 8000);
+    const create = () => generateStructuredAiData(buildLessonPlanPrompt(input), lessonPlanJsonSchema, value => validateLessonPlanOutput(normalizeLessonPlanOutput(value,input),input), request.signal, 8000);
     let plan;
     try { plan = await create(); }
     catch (error) { if (!(error instanceof AiServiceError) || error.status !== 502) throw error; plan = await create(); }
