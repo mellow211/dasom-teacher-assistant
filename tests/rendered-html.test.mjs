@@ -274,6 +274,10 @@ test("keeps newsletter facts and personal details out of storage and logs", asyn
   assert.match(references, /법정대리인/);
   assert.match(references, /공개 가정통신문 게시판\(1,000건 이상\)/);
   assert.match(component, /2026 개인정보보호 지침 반영/);
+  assert.match(rules, /끝\./);
+  assert.match(rules, /절취선/);
+  assert.match(rules, /추후 안내/);
+  assert.match(rules, /항목을 삭제하거나 번호를 다시 매기지 마세요/);
 });
 
 test("keeps the detailed message option selected and avoids padded AI output", async () => {
