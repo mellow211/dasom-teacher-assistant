@@ -231,9 +231,9 @@ test("keeps message privacy and writing rules in the server service", async () =
     readFile(new URL("../supabase/migrations/20260816010000_saved_teacher_messages.sql", import.meta.url), "utf8"),
   ]);
 
-  assert.match(service, /process\.env\.GEMINI_API_KEY/);
-  assert.match(service, /new GoogleGenAI/);
-  assert.match(service, /store:\s*false/);
+  assert.match(service, /process\.env\.REPLICATE_API_TOKEN/);
+  assert.match(service, /api\.replicate\.com/);
+  assert.match(service, /method:\s*"DELETE"/);
   assert.doesNotMatch(service + route, /console\.(log|info|debug)/);
   assert.match(rules, /입력된 사실만 사용/);
   assert.match(rules, /다른 학생의 이름이나 정보를 포함하지 마세요/);
@@ -349,14 +349,14 @@ test("validates lesson plan structure, stage order, time sum, and mixed-level su
   assert.equal(normalized.lessonStages.reduce((sum,stage)=>sum+stage.minutes,0),40);
 });
 
-test("uses Gemini structured output and keeps lesson data out of logs", async () => {
+test("uses structured AI output and keeps lesson data out of logs", async () => {
   const [service, rules, reference, route] = await Promise.all([
     readFile(new URL("../app/lib/ai-service.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/lesson-plan-generator.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/lib/lesson-plan-reference.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/lesson-plans/generate/route.ts", import.meta.url), "utf8"),
   ]);
-  assert.match(service, /response_format/);
+  assert.match(service, /JSON\.stringify\(schema\)/);
   assert.match(service, /application\/json/);
   assert.match(service, /JSON\.parse/);
   assert.doesNotMatch(service + route, /console\.(log|info|debug)/);
