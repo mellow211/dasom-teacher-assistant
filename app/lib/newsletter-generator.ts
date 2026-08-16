@@ -63,6 +63,7 @@ export function validateNewsletterInput(value: unknown): { data?: NewsletterInpu
 }
 
 export function buildNewsletterPrompt(input: NewsletterInput): string {
+  const references = selectNewsletterReferences(input);
   return `다음 입력 정보만 사용하여 학부모에게 실제로 배부할 수 있는 완성된 한국어 가정통신문을 작성하세요.
 
 [입력 정보]
@@ -86,6 +87,8 @@ export function buildNewsletterPrompt(input: NewsletterInput): string {
 - 말투: ${input.tone}
 - 길이: ${input.length}
 
+${references}
+
 [작성 원칙]
 - 제목, 학부모 인사말, 안내 목적과 주요 내용, 입력된 세부 정보, 신청 또는 협조 요청, 마무리 인사 순으로 구성하세요.
 - 세부 정보가 여러 개면 날짜·시간·장소·대상·준비물·비용 등을 읽기 쉬운 항목 형태로 정리하세요.
@@ -98,6 +101,10 @@ export function buildNewsletterPrompt(input: NewsletterInput): string {
 - 입력되지 않은 항목은 자연스럽게 생략하세요.
 - 작성일, 학교명, 발신자는 해당 정보가 입력된 경우에만 표시하세요.
 - 학교장, 담당자, 전화번호 등 입력되지 않은 정보를 추가하지 마세요.
+- 참고 패턴은 구조와 표현 방식에만 활용하고 사례의 학교명·날짜·연락처·비용·고유 문장을 복사하지 마세요.
+- 개인정보 동의에 필요한 목적·항목·보유기간·제공받는 자가 입력되지 않았다면 임의로 완성하지 말고 해당 동의 문구를 생략하세요.
+- 공개 게시될 수 있는 문서이므로 개별 학생이나 학부모를 식별할 수 있는 정보를 포함하지 마세요.
 - 내부 설명, 작성 과정, 주의사항 없이 완성된 가정통신문만 반환하세요.
 - 간단하게는 핵심 위주, 보통은 일반적인 분량, 자세하게는 입력된 유의사항과 협조 사항을 충분히 포함하세요.`;
 }
+import { selectNewsletterReferences } from "./newsletter-reference-library";

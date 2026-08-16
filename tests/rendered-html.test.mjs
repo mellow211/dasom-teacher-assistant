@@ -247,9 +247,11 @@ test("keeps message privacy and writing rules in the server service", async () =
 });
 
 test("keeps newsletter facts and personal details out of storage and logs", async () => {
-  const [rules, route] = await Promise.all([
+  const [rules, route, references, component] = await Promise.all([
     readFile(new URL("../app/lib/newsletter-generator.ts", import.meta.url), "utf8"),
     readFile(new URL("../app/api/newsletters/generate/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/newsletter-reference-library.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/newsletter-generator.tsx", import.meta.url), "utf8"),
   ]);
 
   assert.doesNotMatch(route, /console\.(log|info|debug)/);
@@ -257,6 +259,13 @@ test("keeps newsletter facts and personal details out of storage and logs", asyn
   assert.match(rules, /요일/);
   assert.match(rules, /입력되지 않은 정보를 추가하지 마세요/);
   assert.match(rules, /완성된 가정통신문만 반환하세요/);
+  assert.match(rules, /selectNewsletterReferences/);
+  assert.match(references, /필요한 최소 항목/);
+  assert.match(references, /만 14세 미만/);
+  assert.match(references, /제3자 제공/);
+  assert.match(references, /법정대리인/);
+  assert.match(references, /공개 가정통신문 게시판\(1,000건 이상\)/);
+  assert.match(component, /2026 개인정보보호 지침 반영/);
 });
 
 test.skip("renders the lesson plan generator route after authentication", async () => {
