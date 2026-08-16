@@ -502,8 +502,21 @@ test("dashboard actions link to implemented tools and exclude the removed questi
   for (const route of ["/messages", "/lesson-plans", "/leveled-korean-worksheets", "/korean-performance-assessments", "/workspace", "/attendance-assignments"]) {
     assert.match(shell, new RegExp(route.replaceAll("/", "\\/")));
   }
-  assert.match(shell, /recentRoutes\[i\]/);
+  assert.match(shell, /buildRecentItems/);
+  assert.match(shell, /go\(item\.route\)/);
   assert.match(shell, /수행평가 만들기/);
+});
+
+test("my workspace reflects real saved templates and messages instead of mock data", async () => {
+  const shell = await readFile(new URL("../app/components/app-shell.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(shell, /\["최근 작업","12"/);
+  assert.doesNotMatch(shell, /"2학기 수업 준비","학부모 소통","평가 자료"/);
+  assert.match(shell, /fetch\("\/api\/templates"/);
+  assert.match(shell, /fetch\("\/api\/messages"/);
+  assert.match(shell, /favorites\.length/);
+  assert.match(shell, /templates\.length/);
+  assert.match(shell, /messages\.length/);
+  assert.match(shell, /function WorkspacePage/);
 });
 
 test("validates reusable template content and classifications", async () => {
