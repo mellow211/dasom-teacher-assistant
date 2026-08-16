@@ -6,7 +6,7 @@ import {
   Bell, BookOpen, BriefcaseBusiness, CalendarDays, ChevronDown, ChevronRight,
   CircleHelp, Clock3, FileText, FolderOpen, Grid2X2, Heart,
   Home, LayoutTemplate, Menu, MessageCircleMore, MoreHorizontal, Plus, Search,
-  Sparkles, Star, Users, WandSparkles, X, Check, Save, SlidersHorizontal,
+  Sparkles, Star, Users, X, Check, Save, SlidersHorizontal,
   ClipboardCheck, ChartNoAxesColumnIncreasing, UserRound, UserRoundCog, PenLine, Calculator
 } from "lucide-react";
 import { MessageGenerator } from "./message-generator";
@@ -53,7 +53,6 @@ const lessonTools: Tool[] = [
   { title: "수준별 활동지 생성기", desc: "학급 수준에 맞는 활동지를 빠르게", category: "공통", icon: FileText, color: "mint" },
   { title: "수행평가 생성기", desc: "1학년 국어 과제와 관찰 가능한 채점기준", category: "국어", icon: ClipboardCheck, color: "purple", badge: "NEW" },
   { title: "교과서 받아쓰기 생성기", desc: "교과서 PDF 원문만 사용하는 받아쓰기 학습지", category: "국어", icon: FileText, color: "blue", badge: "NEW" },
-  { title: "문제 생성기", desc: "다양한 유형의 형성평가 문항", category: "수학", icon: WandSparkles, color: "mint" },
   { title: "글쓰기 피드백", desc: "학생 눈높이에 맞춘 친절한 첨삭", category: "국어", icon: MessageCircleMore, color: "purple" },
   { title: "곱셈 퀴즈", desc: "구구단과 곱셈 문제를 혼자 또는 친구와 연습", category: "수학", icon: Calculator, color: "blue", badge: "NEW" },
 ];
@@ -68,6 +67,7 @@ const recent = [
   ["우리 고장 활동지 — 보충", "수준별 활동지", "8월 7일", "사회"],
   ["2학기 학급 역할 배정", "1인 1역 도우미", "8월 5일", "학급관리"],
 ];
+const recentRoutes = ["/lesson-plans", "/messages", "/leveled-korean-worksheets", "/class-roles"];
 
 const templates = [
   ["1학년 수학 활동지", "수학 · 1학년", "활동지", "12회 사용"],
@@ -115,20 +115,20 @@ function Dashboard({ go, userName }: { go: (href: string) => void; userName: str
       <button className="hero-card blue" onClick={() => go("/operations")}><span className="hero-icon"><BriefcaseBusiness /></span><span><small>학급 운영을 더 가볍게</small><b>업무·학급 운영 도우미</b><em>소통, 기록, 학급관리 업무를 도와드려요 <ChevronRight size={17} /></em></span><span className="orb" /></button>
       <button className="hero-card green" onClick={() => go("/lessons")}><span className="hero-icon"><BookOpen /></span><span><small>수업 준비를 더 알차게</small><b>수업 도우미</b><em>지도안부터 평가까지 한 번에 준비해요 <ChevronRight size={17} /></em></span><span className="orb" /></button>
     </section>
-    <div className="section-heading"><div><h2>오늘의 바로가기</h2><p>자주 사용하는 기능을 빠르게 시작하세요.</p></div><button className="text-btn">전체 기능 보기 <ChevronRight size={15} /></button></div>
-    <div className="quick-grid">{[operationTools[0], lessonTools[0], lessonTools[1], lessonTools[2]].map((t, i) => <button className="quick-card" key={t.title} onClick={() => go(i === 0 ? "/messages" : i === 1 ? "/lesson-plans" : "/lessons")}><span className={`tool-icon ${t.color}`}><t.icon size={22} /></span><span><b>{t.title}</b><small>{t.desc}</small></span><Plus size={17} /></button>)}</div>
+    <div className="section-heading"><div><h2>오늘의 바로가기</h2><p>자주 사용하는 기능을 빠르게 시작하세요.</p></div><button className="text-btn" onClick={() => go("/lessons")}>전체 기능 보기 <ChevronRight size={15} /></button></div>
+    <div className="quick-grid">{[[operationTools[0],"/messages"],[lessonTools[0],"/lesson-plans"],[lessonTools[1],"/leveled-korean-worksheets"],[lessonTools[2],"/korean-performance-assessments"]].map(([tool,route]) => {const t=tool as Tool;return <button className="quick-card" key={t.title} onClick={() => go(route as string)}><span className={`tool-icon ${t.color}`}><t.icon size={22} /></span><span><b>{t.title}</b><small>{t.desc}</small></span><Plus size={17} /></button>})}</div>
     <div className="dashboard-grid">
-      <section className="card"><div className="card-head"><div><h2>최근 작업</h2><p>이어서 작업하거나 다시 활용해 보세요.</p></div><button className="text-btn">모두 보기</button></div><div className="recent-list">{recent.slice(0,3).map((r,i) => <button key={r[0]}><span className={`file-icon f${i}`}><FileText size={18} /></span><span><b>{r[0]}</b><small>{r[1]} · {r[2]}</small></span><span className="subject-badge">{r[3]}</span><MoreHorizontal size={18} /></button>)}</div></section>
-      <section className="card recommendation"><div className="card-head"><div><span className="eyebrow"><Sparkles size={13} /> 선생님을 위한 추천</span><h2>새 학기 자리배치,<br />고민 없이 시작해 보세요</h2></div></div><p>학생의 성향과 관계를 고려해<br />균형 잡힌 자리를 제안해 드려요.</p><button className="primary-btn" onClick={() => go("/operations")}>자리배치 시작하기 <ChevronRight size={16} /></button><span className="seat-art"><i /><i /><i /><i /><i /><i /></span></section>
+      <section className="card"><div className="card-head"><div><h2>최근 작업</h2><p>사용했던 도구를 빠르게 다시 열어 보세요.</p></div><button className="text-btn" onClick={() => go("/workspace")}>모두 보기</button></div><div className="recent-list">{recent.slice(0,3).map((r,i) => <button key={r[0]} onClick={() => go(recentRoutes[i])}><span className={`file-icon f${i}`}><FileText size={18} /></span><span><b>{r[0]}</b><small>{r[1]} · {r[2]}</small></span><span className="subject-badge">{r[3]}</span><ChevronRight size={18} /></button>)}</div></section>
+      <section className="card recommendation"><div className="card-head"><div><span className="eyebrow"><Sparkles size={13} /> 선생님을 위한 추천</span><h2>1학년 국어 수행평가,<br />기준부터 관찰표까지 준비해요</h2></div></div><p>성취기준과 평가 요소를 입력하면<br />학생용·교사용 자료를 함께 만들어요.</p><button className="primary-btn" onClick={() => go("/korean-performance-assessments")}>수행평가 만들기 <ChevronRight size={16} /></button><span className="seat-art"><i /><i /><i /><i /><i /><i /></span></section>
     </div>
     <div className="section-heading"><div><h2>카테고리 한눈에 보기</h2><p>필요한 도움을 바로 찾아보세요.</p></div></div>
-    <div className="category-summary">{[["소통", "학부모 메시지, 가정통신문", MessageCircleMore, "blue"],["수업 설계", "지도안, 일일수학", BookOpen, "mint"],["평가", "수행평가, 문제 생성", ClipboardCheck, "purple"],["학급관리", "출석, 역할 배정", Users, "orange"]].map(([a,b,I,c]) => { const Icon=I as React.ElementType; return <button key={a as string}><span className={`tool-icon ${c}`}><Icon size={20}/></span><span><b>{a as string}</b><small>{b as string}</small></span><ChevronRight size={17}/></button>})}</div>
+    <div className="category-summary">{[["소통", "학부모 메시지, 가정통신문", MessageCircleMore, "blue", "/messages"],["수업 설계", "지도안, 일일수학", BookOpen, "mint", "/lesson-plans"],["평가", "1학년 국어 수행평가", ClipboardCheck, "purple", "/korean-performance-assessments"],["학급관리", "출석, 역할 배정", Users, "orange", "/attendance-assignments"]].map(([a,b,I,c,route]) => { const Icon=I as React.ElementType; return <button key={a as string} onClick={() => go(route as string)}><span className={`tool-icon ${c}`}><Icon size={20}/></span><span><b>{a as string}</b><small>{b as string}</small></span><ChevronRight size={17}/></button>})}</div>
   </>;
 }
 
 function ToolsPage({ kind }: { kind: "operations" | "lessons" }) {
   const isLesson = kind === "lessons"; const tools = isLesson ? lessonTools : operationTools;
-  const categories = isLesson ? ["전체", "공통", "국어", "수학", "통합/사회/과학", "영어", "평가"] : ["전체", "소통", "기록/행정", "학급관리", "분석"];
+  const categories = isLesson ? ["전체", "공통", "국어", "수학", "통합/사회/과학", "영어"] : ["전체", "소통", "기록/행정", "학급관리", "분석"];
   const [category, setCategory] = useState("전체"); const [selected, setSelected] = useState(tools[0]);
   const selectedRoute = toolRoutes[selected.title];
   const visible = category === "전체" ? tools : tools.filter(t => t.category === category || (category === "통합/사회/과학" && t.category === "통합"));

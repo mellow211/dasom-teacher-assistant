@@ -474,3 +474,13 @@ test("provides contextual first-use guidance for every implemented teacher tool"
   assert.match(styles, /field-help-trigger:hover/);
   assert.match(styles, /field-help-trigger:focus-visible/);
 });
+
+test("dashboard actions link to implemented tools and exclude the removed question generator", async () => {
+  const shell = await readFile(new URL("../app/components/app-shell.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(shell, /title: "문제 생성기"/);
+  for (const route of ["/messages", "/lesson-plans", "/leveled-korean-worksheets", "/korean-performance-assessments", "/workspace", "/attendance-assignments"]) {
+    assert.match(shell, new RegExp(route.replaceAll("/", "\\/")));
+  }
+  assert.match(shell, /recentRoutes\[i\]/);
+  assert.match(shell, /수행평가 만들기/);
+});
