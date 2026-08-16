@@ -433,3 +433,18 @@ test("keeps student writing out of storage and logs",async()=>{
   assert.match(rules,/학생 대신 글 전체를 다시 쓰지 마세요/);
   assert.match(rules,/실제 오류만 제시/);
 });
+
+test("provides contextual first-use guidance for every implemented teacher tool", async () => {
+  const [help, shell, styles] = await Promise.all([
+    readFile(new URL("../app/components/contextual-help.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/components/app-shell.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+  ]);
+  for (const section of ["messages", "newsletters", "lesson-plans", "student-observations", "writing-feedback", "attendance-assignments", "class-roles", "class-management", "surveys", "daily-math", "daily-english", "multiplication-quiz", "history-quiz", "textbook-dictation"]) assert.ok(help.includes(section));
+  assert.match(help, /field-help-trigger/);
+  assert.match(help, /aria-expanded/);
+  assert.match(help, /MutationObserver/);
+  assert.match(shell, /ContextualHelp/);
+  assert.match(styles, /field-help-trigger:hover/);
+  assert.match(styles, /field-help-trigger:focus-visible/);
+});
