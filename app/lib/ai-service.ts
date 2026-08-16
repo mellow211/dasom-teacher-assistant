@@ -63,6 +63,7 @@ export async function generateStructuredAiData<T>(
   schema: Record<string, unknown>,
   validate: (value: unknown) => T | null,
   signal?: AbortSignal,
+  maxOutputTokens = 4000,
 ): Promise<T> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new AiServiceError("AI 서비스 설정이 완료되지 않았습니다.", 503);
@@ -74,7 +75,7 @@ export async function generateStructuredAiData<T>(
         model: process.env.GEMINI_MODEL || "gemini-3.6-flash",
         input: prompt,
         store: false,
-        generation_config: { thinking_level: "low", max_output_tokens: 4000 },
+        generation_config: { thinking_level: "low", max_output_tokens: maxOutputTokens },
         response_format: { type: "text", mime_type: "application/json", schema },
       },
       signal ? { fetchOptions: { signal } } : undefined,

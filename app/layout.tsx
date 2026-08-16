@@ -12,6 +12,7 @@ import "./class-role-assignment.css";
 import "./class-role-fixes.css";
 import "./class-student-manager.css";
 import "./survey.css";
+import "./leveled-korean-worksheet.css";
 
 export const metadata: Metadata = {
   title: "다솜쌤 | AI 교사 도우미",
