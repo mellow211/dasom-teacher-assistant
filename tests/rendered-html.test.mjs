@@ -501,3 +501,34 @@ test("dashboard actions link to implemented tools and exclude the removed questi
   assert.match(shell, /recentRoutes\[i\]/);
   assert.match(shell, /수행평가 만들기/);
 });
+
+test("validates reusable template content and classifications", async () => {
+  const store = await readFile(new URL("../app/lib/template-store.ts", import.meta.url), "utf8");
+  assert.match(store, /if \(!title\)/);
+  assert.match(store, /if \(!content\)/);
+  assert.match(store, /TEMPLATE_SCOPES\.includes/);
+  assert.match(store, /TEMPLATE_TYPES\.includes/);
+  assert.match(store, /TEMPLATE_GRADES\.includes/);
+  assert.match(store, /TEMPLATE_SUBJECTS\.includes/);
+});
+
+test("keeps templates account-owned and server-persisted", async () => {
+  const [component, store, route, migration] = await Promise.all([
+    readFile(new URL("../app/components/template-library.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/template-store.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/templates/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../supabase/migrations/20260816030000_teacher_templates.sql", import.meta.url), "utf8"),
+  ]);
+  assert.doesNotMatch(component + store + route, /localStorage|sessionStorage|console\.(log|info|debug)/);
+  assert.match(store, /attendanceStoreRequest/);
+  assert.match(route, /getChatGPTUser/);
+  assert.match(migration, /enable row level security/);
+  assert.match(migration, /x-owner-key/);
+});
+
+test("requires login for the template API", async () => {
+  const worker = await getWorker();
+  const response = await worker.fetch(new Request("http://localhost/api/templates"), env, context);
+  assert.equal(response.status, 401);
+  assert.match((await response.json()).error, /로그인/);
+});

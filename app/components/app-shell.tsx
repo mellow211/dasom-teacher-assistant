@@ -6,7 +6,7 @@ import {
   Bell, BookOpen, BriefcaseBusiness, CalendarDays, ChevronDown, ChevronRight,
   CircleHelp, Clock3, FileText, FolderOpen, Grid2X2, Heart,
   Home, LayoutTemplate, Menu, MessageCircleMore, MoreHorizontal, Plus, Search,
-  Sparkles, Star, Users, X, Check, Save, SlidersHorizontal,
+  Sparkles, Users, X, Check, Save, SlidersHorizontal,
   ClipboardCheck, ChartNoAxesColumnIncreasing, UserRound, UserRoundCog, PenLine, Calculator
 } from "lucide-react";
 import { MessageGenerator } from "./message-generator";
@@ -26,6 +26,7 @@ import { SurveyManager } from "./survey-manager";
 import { ContextualHelp } from "./contextual-help";
 import { LeveledKoreanWorksheetGenerator } from "./leveled-korean-worksheet-generator";
 import { KoreanPerformanceAssessmentGenerator } from "./korean-performance-assessment-generator";
+import { TemplateLibrary } from "./template-library";
 
 type Section = "dashboard" | "operations" | "lessons" | "templates" | "workspace" | "help" | "messages" | "newsletters" | "lesson-plans" | "student-observations" | "writing-feedback" | "leveled-korean-worksheets" | "korean-performance-assessments" | "multiplication-quiz" | "daily-math" | "daily-english" | "history-quiz" | "textbook-dictation" | "attendance-assignments" | "class-roles" | "class-management" | "surveys";
 type Tool = { title: string; desc: string; category: string; icon: React.ElementType; color: string; badge?: string };
@@ -68,15 +69,6 @@ const recent = [
   ["2학기 학급 역할 배정", "1인 1역 도우미", "8월 5일", "학급관리"],
 ];
 const recentRoutes = ["/lesson-plans", "/messages", "/leveled-korean-worksheets", "/class-roles"];
-
-const templates = [
-  ["1학년 수학 활동지", "수학 · 1학년", "활동지", "12회 사용"],
-  ["학부모 안내 메시지", "공통 · 소통", "메시지", "28회 사용"],
-  ["상담기록 기본 양식", "공통 · 기록", "기록지", "9회 사용"],
-  ["수행평가 루브릭", "공통 · 평가", "평가", "16회 사용"],
-  ["독서 감상 활동지", "국어 · 3~4학년", "활동지", "7회 사용"],
-  ["과학 탐구 보고서", "과학 · 5~6학년", "보고서", "11회 사용"],
-];
 
 function Select({ children, wide = false }: { children: React.ReactNode; wide?: boolean }) {
   return <button className={`select ${wide ? "wide" : ""}`}>{children}<ChevronDown size={15} /></button>;
@@ -143,14 +135,6 @@ function ToolsPage({ kind }: { kind: "operations" | "lessons" }) {
   </>;
 }
 
-function TemplatesPage() {
-  const [active, setActive] = useState("전체");
-  return <><div className="page-title"><div><span className="eyebrow">LIBRARY</span><h1>자료·템플릿 보관함</h1><p>자주 쓰는 양식과 수업 자료를 한곳에서 찾아보세요.</p></div><button className="primary-btn"><Plus size={17}/> 새 템플릿</button></div>
-  <div className="library-search"><div className="search-box"><Search size={18}/><input placeholder="템플릿 이름이나 교과를 검색하세요"/></div><Select>전체 학년</Select><Select>전체 교과</Select><Select>자료 유형</Select></div>
-  <div className="tabs">{["전체","최근 사용","수업 자료","업무 양식","즐겨찾기"].map(x=><button className={active===x?"active":""} onClick={()=>setActive(x)} key={x}>{x}</button>)}</div>
-  <div className="template-grid">{templates.map((t,i)=><article className="template-card" key={t[0]}><div className={`template-thumb thumb-${i}`}><span>{i%2===0?"수업 자료":"업무 양식"}</span><FileText size={35}/><div className="mock-lines"><i/><i/><i/></div><button aria-label="즐겨찾기"><Star size={17}/></button></div><div><span className="subject-badge">{t[2]}</span><h3>{t[0]}</h3><p>{t[1]}</p><small><Clock3 size={13}/>{t[3]}</small></div></article>)}</div></>;
-}
-
 function WorkspacePage() {
   return <><div className="page-title"><div><span className="eyebrow">MY WORKSPACE</span><h1>내 작업공간</h1><p>최근 작업과 즐겨찾기 자료를 편리하게 관리하세요.</p></div><button className="primary-btn"><Plus size={17}/> 새 폴더</button></div>
   <div className="stats-row">{[["최근 작업","12",Clock3,"blue"],["즐겨찾기","8",Heart,"orange"],["저장한 결과물","24",Save,"mint"],["내 템플릿","6",LayoutTemplate,"purple"]].map(([a,b,I,c])=>{const Icon=I as React.ElementType;return <div className="stat-card" key={a as string}><span className={`tool-icon ${c}`}><Icon size={20}/></span><span><small>{a as string}</small><b>{b as string}</b></span></div>})}</div>
@@ -176,7 +160,7 @@ export function AppShell({ section: raw, userEmail, userName }: { section: strin
   return <div className="app-shell">
     <aside className={`sidebar ${mobile ? "open" : ""}`}><div className="brand"><span className="logo-mark"><Sparkles size={21}/></span><span><b>다솜쌤</b><small>AI 교사 도우미</small></span><button onClick={()=>setMobile(false)} className="mobile-close"><X/></button></div><nav>{nav.map(n=>{const active=section===n.id || ((section==="messages" || section==="newsletters" || section==="student-observations" || section==="attendance-assignments" || section==="class-roles" || section==="surveys") && n.id==="operations") || ((section==="lesson-plans" || section==="writing-feedback" || section==="leveled-korean-worksheets" || section==="korean-performance-assessments" || section==="multiplication-quiz") && n.id==="lessons");return <a key={n.id} href={n.href} className={`${active?"active":""} ${n.id==="class-management"?"standalone-nav":""}`}><n.icon size={19}/><span>{n.label}</span>{n.id==="lessons"&&<em>NEW</em>}</a>})}</nav><div className="side-bottom"><a href="/help" className={section==="help"?"active":""}><CircleHelp size={19}/>설정·도움말</a><div className="support"><span><Sparkles size={17}/></span><b>무엇을 도와드릴까요?</b><p>사용 중 궁금한 점을<br/>편하게 알려주세요.</p><button>도움말 보기</button></div><div className="profile"><span>{(userName||userEmail||"교").slice(0,1)}</span><div><b>{userName||"로그인한 교사"}</b><small>{userEmail||""}</small></div><button className="logout-button" aria-label="로그아웃" title="로그아웃" onClick={async()=>{await fetch("/api/auth/logout",{method:"POST"});window.location.assign("/login")}}><MoreHorizontal size={18}/></button></div></div></aside>
     <div className="main-wrap"><header><button className="menu-button" onClick={()=>setMobile(true)}><Menu/></button><div className="global-search"><Search size={18}/><input placeholder="기능이나 자료를 검색해 보세요"/><kbd>⌘ K</kbd></div><div className="header-actions"><button className="icon-button" onClick={()=>setNotice(!notice)}><Bell size={19}/><i/></button><span className="header-divider"/><button className="school" onClick={()=>go("/class-management")}><span>{currentClass?`${currentClass.grade}-${currentClass.classNumber}`:"+"}</span><div><small>현재 학급</small><b>{currentClass?`${currentClass.grade}학년 ${currentClass.classNumber}반${currentClass.name?` · ${currentClass.name}`:""}`:"학급을 등록해 주세요"}</b></div><ChevronRight size={15}/></button></div>{notice&&<div className="notice-pop"><b>알림</b><button onClick={()=>setNotice(false)}><X size={15}/></button><p>{userName||"선생님"} 계정으로 안전하게 로그인되어 있어요.</p><small>@{userEmail}</small></div>}</header>
-      <main>{section==="dashboard"&&<Dashboard go={go} userName={userName||userEmail||"선생님"}/>} {section==="operations"&&<ToolsPage kind="operations"/>}{section==="lessons"&&<ToolsPage kind="lessons"/>}{section==="templates"&&<TemplatesPage/>}{section==="workspace"&&<WorkspacePage/>}{section==="help"&&<HelpPage userName={userName||"선생님"} userId={userEmail||""}/>} {section==="messages"&&<MessageGenerator/>}{section==="newsletters"&&<NewsletterGenerator/>}{section==="lesson-plans"&&<LessonPlanGenerator/>}{section==="student-observations"&&<StudentObservationOrganizer/>}{section==="writing-feedback"&&<WritingFeedbackAssistant/>}{section==="leveled-korean-worksheets"&&<LeveledKoreanWorksheetGenerator/>}{section==="korean-performance-assessments"&&<KoreanPerformanceAssessmentGenerator/>}{section==="multiplication-quiz"&&<MultiplicationQuiz/>}{section==="daily-math"&&<DailyMathWorksheet/>}{section==="daily-english"&&<DailyEnglishWorksheet/>}{section==="history-quiz"&&<HistoryQuiz/>}{section==="textbook-dictation"&&<TextbookDictation/>}{section==="attendance-assignments"&&<AttendanceAssignmentManager/>}{section==="class-roles"&&<ClassRoleAssignment/>}{section==="class-management"&&<ClassStudentManager/>}{section==="surveys"&&<SurveyManager/>}</main>
+      <main>{section==="dashboard"&&<Dashboard go={go} userName={userName||userEmail||"선생님"}/>} {section==="operations"&&<ToolsPage kind="operations"/>}{section==="lessons"&&<ToolsPage kind="lessons"/>}{section==="templates"&&<TemplateLibrary/>}{section==="workspace"&&<WorkspacePage/>}{section==="help"&&<HelpPage userName={userName||"선생님"} userId={userEmail||""}/>} {section==="messages"&&<MessageGenerator/>}{section==="newsletters"&&<NewsletterGenerator/>}{section==="lesson-plans"&&<LessonPlanGenerator/>}{section==="student-observations"&&<StudentObservationOrganizer/>}{section==="writing-feedback"&&<WritingFeedbackAssistant/>}{section==="leveled-korean-worksheets"&&<LeveledKoreanWorksheetGenerator/>}{section==="korean-performance-assessments"&&<KoreanPerformanceAssessmentGenerator/>}{section==="multiplication-quiz"&&<MultiplicationQuiz/>}{section==="daily-math"&&<DailyMathWorksheet/>}{section==="daily-english"&&<DailyEnglishWorksheet/>}{section==="history-quiz"&&<HistoryQuiz/>}{section==="textbook-dictation"&&<TextbookDictation/>}{section==="attendance-assignments"&&<AttendanceAssignmentManager/>}{section==="class-roles"&&<ClassRoleAssignment/>}{section==="class-management"&&<ClassStudentManager/>}{section==="surveys"&&<SurveyManager/>}</main>
     </div><ContextualHelp section={section}/>{mobile&&<button className="overlay" onClick={()=>setMobile(false)} aria-label="메뉴 닫기"/>}
   </div>;
 }
