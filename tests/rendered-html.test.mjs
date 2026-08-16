@@ -276,6 +276,20 @@ test("keeps newsletter facts and personal details out of storage and logs", asyn
   assert.match(component, /2026 개인정보보호 지침 반영/);
 });
 
+test("keeps the detailed message option selected and avoids padded AI output", async () => {
+  const [component, rules, styles] = await Promise.all([
+    readFile(new URL("../app/components/message-generator.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/message-generator.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+  ]);
+  assert.match(component, /aria-pressed=\{form\.length === length\}/);
+  assert.match(component, /message-option-grid/);
+  assert.match(rules, /5~7문장/);
+  assert.match(rules, /같은 사실이나 부탁을 반복하지 마세요/);
+  assert.match(rules, /사실을 반복하거나 만들어내는 것보다 짧고 정확하게/);
+  assert.match(styles, /message-form \.message-option-grid/);
+});
+
 test.skip("renders the lesson plan generator route after authentication", async () => {
   const worker = await getWorker();
   const response = await worker.fetch(new Request("http://localhost/lesson-plans", { headers: { accept: "text/html" } }), env, context);
