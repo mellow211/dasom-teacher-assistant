@@ -93,7 +93,7 @@ export function MultiplicationQuiz() {
   useEffect(() => {
     if (stage !== "room" || !roomCode) return;
     let active = true;
-    const poll = () => fetch(`/api/public-multiplication-battle/${roomCode}/entries`).then((r) => r.json()).then((p: { entries?: BattleEntry[] }) => { if (active && p.entries) setLeaderboard(p.entries); }).catch(() => {});
+    const poll = () => fetch(`/api/public-multiplication-battle/${roomCode}/entries`).then((r) => r.json()).then((raw) => { const p = raw as { entries?: BattleEntry[] }; if (active && p.entries) setLeaderboard(p.entries); }).catch(() => {});
     poll();
     const id = setInterval(poll, 3000);
     return () => { active = false; clearInterval(id); };

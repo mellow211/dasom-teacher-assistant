@@ -48,7 +48,7 @@ export function MultiplicationBattleRoom({ code }: { code: string }) {
   useEffect(() => {
     if (stage !== "submitted") return;
     let active = true;
-    const poll = () => fetch(`/api/public-multiplication-battle/${code}/entries`).then(r => r.json()).then((p: { entries?: Entry[] }) => { if (active && p.entries) setEntries(p.entries); }).catch(() => {});
+    const poll = () => fetch(`/api/public-multiplication-battle/${code}/entries`).then(r => r.json()).then((raw) => { const p = raw as { entries?: Entry[] }; if (active && p.entries) setEntries(p.entries); }).catch(() => {});
     poll();
     const id = setInterval(poll, 3000);
     return () => { active = false; clearInterval(id); };
