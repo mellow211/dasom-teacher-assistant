@@ -25,13 +25,39 @@ function withExtraStyles(headerXml: string): string {
 let idSeq = 1000;
 const nextId = () => idSeq++;
 
-function paragraph(text: string, paraPrIDRef = 0, charPrIDRef = 0, horzsize = 40000): string {
-  const run = text ? `<hp:t>${esc(text)}</hp:t>` : "<hp:t/>";
-  return `<hp:p id="${nextId()}" paraPrIDRef="${paraPrIDRef}" styleIDRef="0" pageBreak="0" columnBreak="0" merged="0"><hp:run charPrIDRef="${charPrIDRef}">${run}</hp:run><hp:linesegarray><hp:lineseg textpos="0" vertpos="0" vertsize="1000" textheight="1000" baseline="850" spacing="600" horzpos="0" horzsize="${horzsize}" flags="393216"/></hp:linesegarray></hp:p>`;
+/** Rough per-character width estimate (HWPUNIT) at a given font height, used only
+ * to decide where to break a long string into separate single-line paragraphs —
+ * see the comment on `paragraph()` for why that's necessary. */
+function charWidth(ch: string, fontHeight: number): number {
+  const code = ch.codePointAt(0) || 0;
+  const wide = (code >= 0x1100 && code <= 0x11ff) || (code >= 0x2e80 && code <= 0xa4cf) || (code >= 0xac00 && code <= 0xd7a3) || (code >= 0xf900 && code <= 0xfaff) || (code >= 0xff00 && code <= 0xff60) || (code >= 0xffe0 && code <= 0xffe6);
+  return wide ? fontHeight : Math.round(fontHeight * 0.55);
+}
+function wrapLines(text: string, maxWidth: number, fontHeight: number): { line: string; width: number }[] {
+  const lines: { line: string; width: number }[] = [];
+  let current = "", width = 0;
+  for (const ch of text) {
+    const w = charWidth(ch, fontHeight);
+    if (width + w > maxWidth && current) { lines.push({ line: current, width }); current = ""; width = 0; }
+    current += ch; width += w;
+  }
+  if (current || !lines.length) lines.push({ line: current, width });
+  return lines;
+}
+
+/** HWPX stores each visual line's position in hp:linesegarray rather than
+ * recomputing wrapping on open, so a single <hp:p> whose text is wider than its
+ * paragraph can render with every wrapped line stacked at the same position
+ * (garbled/overlapping text). To avoid that, long text is pre-wrapped here into
+ * one single-line <hp:p> per visual line, each with an accurate horzsize. */
+function paragraph(text: string, paraPrIDRef = 0, charPrIDRef = 0, maxWidth = 40000, fontHeight = 1000): string {
+  if (!text) return `<hp:p id="${nextId()}" paraPrIDRef="${paraPrIDRef}" styleIDRef="0" pageBreak="0" columnBreak="0" merged="0"><hp:run charPrIDRef="${charPrIDRef}"><hp:t/></hp:run><hp:linesegarray><hp:lineseg textpos="0" vertpos="0" vertsize="${fontHeight}" textheight="${fontHeight}" baseline="850" spacing="600" horzpos="0" horzsize="${maxWidth}" flags="393216"/></hp:linesegarray></hp:p>`;
+  return wrapLines(text, maxWidth, fontHeight).map(({ line, width }) => `<hp:p id="${nextId()}" paraPrIDRef="${paraPrIDRef}" styleIDRef="0" pageBreak="0" columnBreak="0" merged="0"><hp:run charPrIDRef="${charPrIDRef}"><hp:t>${esc(line)}</hp:t></hp:run><hp:linesegarray><hp:lineseg textpos="0" vertpos="0" vertsize="${fontHeight}" textheight="${fontHeight}" baseline="850" spacing="600" horzpos="0" horzsize="${Math.max(width, 500)}" flags="393216"/></hp:linesegarray></hp:p>`).join("");
 }
 
 function tableCell(lines: string[], width: number, height: number, colAddr: number, rowAddr: number, headerCell: boolean): string {
-  const body = (lines.length ? lines : [""]).map(line => paragraph(line, 20, headerCell ? 8 : 0, Math.max(1000, width - 400))).join("");
+  const innerWidth = Math.max(1000, width - 400);
+  const body = (lines.length ? lines : [""]).map(line => paragraph(line, 20, headerCell ? 8 : 0, innerWidth)).join("");
   return `<hp:tc name="" header="${headerCell ? 1 : 0}" hasMargin="0" protect="0" editable="0" dirty="0" borderFillIDRef="3"><hp:subList id="" textDirection="HORIZONTAL" lineWrap="BREAK" vertAlign="CENTER" linkListIDRef="0" linkListNextIDRef="0" textWidth="0" textHeight="0" hasTextRef="0" hasNumRef="0">${body}</hp:subList><hp:cellAddr colAddr="${colAddr}" rowAddr="${rowAddr}"/><hp:cellSpan colSpan="1" rowSpan="1"/><hp:cellSz width="${width}" height="${height}"/><hp:cellMargin left="200" right="200" top="141" bottom="141"/></hp:tc>`;
 }
 
@@ -51,7 +77,7 @@ function buildSection0Xml(result: LessonPlanData & { overview: LessonPlanOvervie
   idSeq = 1000;
   const metaWidths = [6300, 15160, 6300, 14760];
   const flowWidths = [6000, 9000, 17520, 10000];
-  const evalWidths = [6300, 6300, 6300, 23620];
+  const evalWidths = [8000, 34520];
   const parts: string[] = [HWPX_FIRST_PARAGRAPH];
 
   parts.push(paragraph(result.title, 20, 7, CONTENT_WIDTH));
@@ -89,12 +115,12 @@ function buildSection0Xml(result: LessonPlanData & { overview: LessonPlanOvervie
   parts.push(paragraph("", 0, 0, CONTENT_WIDTH));
   parts.push(paragraph("평가 계획", 0, 8, CONTENT_WIDTH));
   parts.push(table([
-    [["평가 내용"], result.assessment.content, [""], [""]],
-    [["평가 방법"], result.assessment.method, [""], [""]],
-    [["관찰 행동"], result.assessment.observableBehaviors, [""], [""]],
-    [["평가 기준"], ["상"], [result.assessment.criteria.high], [""]],
-    [[""], ["중"], [result.assessment.criteria.medium], [""]],
-    [[""], ["하"], [result.assessment.criteria.low], [""]],
+    [["평가 내용"], result.assessment.content],
+    [["평가 방법"], result.assessment.method],
+    [["관찰 행동"], result.assessment.observableBehaviors],
+    [["평가 기준 - 상"], [result.assessment.criteria.high]],
+    [["평가 기준 - 중"], [result.assessment.criteria.medium]],
+    [["평가 기준 - 하"], [result.assessment.criteria.low]],
   ], evalWidths));
 
   parts.push(paragraph("", 0, 0, CONTENT_WIDTH));

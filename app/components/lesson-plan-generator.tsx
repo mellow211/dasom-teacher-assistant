@@ -17,7 +17,7 @@ const text = (value:string[]) => value.join("\n");
 
 export function LessonPlanGenerator() {
   const [form,setForm]=useState<LessonPlanSelection>(initialForm); const [errors,setErrors]=useState<LessonPlanErrors>({});
-  const [result,setResult]=useState<Result|null>(null); const [isLoading,setIsLoading]=useState(false); const [apiError,setApiError]=useState(""); const [copied,setCopied]=useState(false); const [saveNotice,setSaveNotice]=useState("");
+  const [result,setResult]=useState<Result|null>(null); const [isLoading,setIsLoading]=useState(false); const [apiError,setApiError]=useState(""); const [copied,setCopied]=useState(false); const [saveNotice,setSaveNotice]=useState(""); const [pdfLoading,setPdfLoading]=useState(false);
   const update=<K extends keyof LessonPlanSelection>(key:K,value:LessonPlanSelection[K])=>{setForm(c=>({...c,[key]:value}));setErrors(c=>({...c,[key]:undefined}));};
   const units=useMemo(()=>curriculumUnits(form.semester),[form.semester]);
   const topics=useMemo(()=>form.unit?curriculumTopics(form.semester,form.unit):[],[form.semester,form.unit]);
@@ -33,6 +33,27 @@ export function LessonPlanGenerator() {
   const setSupport=(index:number,value:string)=>setResult(c=>{if(!c)return c;const levelSupport=[...c.levelSupport];levelSupport[index]={...levelSupport[index],support:lines(value)};return{...c,levelSupport};});
   const copyAll=async()=>{if(!result)return;const out=formatLessonPlanText(result);try{await navigator.clipboard.writeText(out);setCopied(true);window.setTimeout(()=>setCopied(false),2000);}catch{setApiError("복사하지 못했습니다. 각 내용을 직접 선택해 복사해 주세요.");}};
   const printDoc=()=>{if(!result)return;document.documentElement.dataset.lpPrint="1";window.addEventListener("afterprint",()=>{delete document.documentElement.dataset.lpPrint;},{once:true});window.print();};
+  const downloadPdf=async()=>{
+    if(!result||pdfLoading)return;
+    setPdfLoading(true);setApiError("");
+    document.documentElement.dataset.lpPdf="1";
+    try{
+      const sheet=document.querySelector<HTMLElement>(".lp-sheet");
+      if(!sheet)throw new Error("인쇄할 내용을 찾지 못했습니다.");
+      const [{default:html2canvas},{jsPDF}]=await Promise.all([import("html2canvas"),import("jspdf")]);
+      const canvas=await html2canvas(sheet,{scale:2,backgroundColor:"#ffffff"});
+      const pdf=new jsPDF({unit:"mm",format:"a4",orientation:"portrait"});
+      const pageW=210,pageH=297;
+      const imgW=pageW,imgH=canvas.height*imgW/canvas.width;
+      const imgData=canvas.toDataURL("image/png");
+      let heightLeft=imgH,position=0;
+      pdf.addImage(imgData,"PNG",0,position,imgW,imgH);
+      heightLeft-=pageH;
+      while(heightLeft>0){position=heightLeft-imgH;pdf.addPage();pdf.addImage(imgData,"PNG",0,position,imgW,imgH);heightLeft-=pageH;}
+      pdf.save(`${(result.title||"지도안").replace(/[\\/:*?"<>|]/g,"")}.pdf`);
+    }catch{setApiError("PDF를 만들지 못했습니다. 잠시 후 다시 시도해 주세요.");}
+    finally{delete document.documentElement.dataset.lpPdf;setPdfLoading(false);}
+  };
   const downloadHwp=()=>{if(!result)return;const bytes=buildLessonPlanHwpx(result,form.durationMinutes);const blob=new Blob([bytes.buffer as ArrayBuffer],{type:"application/hwp+zip"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`${(result.title||"지도안").replace(/[\\/:*?"<>|]/g,"")}.hwpx`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);};
 
   return <><div className="page-title message-page-title"><div><span className="eyebrow">LESSON PLAN ASSISTANT · 1학년 국어</span><h1>1학년 국어 지도안 생성기</h1><p>참고자료의 수업 설계 원리에 따라 목표·활동·평가가 연결된 지도안을 작성해 드려요.</p></div><span className="privacy-note"><Check size={15}/> 생성 결과만 계정에 저장</span></div>
@@ -59,8 +80,8 @@ export function LessonPlanGenerator() {
       <LessonSection title="5. 평가 계획"><div className="assessment-grid">{(["content","method","observableBehaviors"] as const).map(key=><label key={key}><span>{{content:"평가 내용",method:"평가 방법",observableBehaviors:"관찰할 학생 행동"}[key]}</span><textarea value={text(result.assessment[key])} onChange={e=>setAssessment(key,e.target.value)}/></label>)}</div><div className="criteria-grid">{(["high","medium","low"] as const).map(key=><label key={key}><span>{{high:"상",medium:"중",low:"하"}[key]} 기준</span><textarea value={result.assessment.criteria[key]} onChange={e=>setCriterion(key,e.target.value)}/></label>)}</div><label className="alignment-editor"><span>목표·활동·평가 연결 근거</span><textarea value={result.assessment.alignmentEvidence} onChange={e=>setResult(c=>c?{...c,assessment:{...c.assessment,alignmentEvidence:e.target.value}}:c)}/></label></LessonSection>
       <LessonSection title="6. 수준별 지원"><div className="support-grid">{result.levelSupport.map((s,i)=><label key={s.level}><span className={`level-badge level-${s.level}`}>{s.level}</span><textarea value={text(s.support)} onChange={e=>setSupport(i,e.target.value)}/></label>)}</div></LessonSection>
       <p className="edit-hint">수업 전에 학급 상황에 맞게 시간과 활동 내용을 검토해 주세요.</p>
-      <div className="preview-actions message-actions"><button className="ghost-btn" onClick={copyAll}>{copied?<><Check size={16}/> 복사 완료</>:<><Copy size={16}/> 전체 내용 복사</>}</button><button className="ghost-btn" onClick={printDoc}><Printer size={16}/> 인쇄</button><button className="ghost-btn" onClick={printDoc}><FileDown size={16}/> PDF로 저장</button><button className="ghost-btn" onClick={downloadHwp}><FileText size={16}/> 한글로 저장</button><button className="primary-btn" onClick={generate} disabled={isLoading}>{isLoading?<LoaderCircle className="spin" size={16}/>:<RefreshCw size={16}/>} 다시 생성</button></div>
-      <p className="edit-hint lp-export-hint">PDF로 저장은 인쇄 대화상자에서 프린터로 &ldquo;PDF로 저장&rdquo;을 선택하면 되고, 한글로 저장은 한글(HWP)의 기본 파일 형식(.hwpx)으로 바로 내려받아요.</p>
+      <div className="preview-actions message-actions"><button className="ghost-btn" onClick={copyAll}>{copied?<><Check size={16}/> 복사 완료</>:<><Copy size={16}/> 전체 내용 복사</>}</button><button className="ghost-btn" onClick={printDoc}><Printer size={16}/> 인쇄</button><button className="ghost-btn" onClick={downloadPdf} disabled={pdfLoading}>{pdfLoading?<LoaderCircle className="spin" size={16}/>:<FileDown size={16}/>} PDF로 저장</button><button className="ghost-btn" onClick={downloadHwp}><FileText size={16}/> 한글로 저장</button><button className="primary-btn" onClick={generate} disabled={isLoading}>{isLoading?<LoaderCircle className="spin" size={16}/>:<RefreshCw size={16}/>} 다시 생성</button></div>
+      <p className="edit-hint lp-export-hint">PDF로 저장과 한글로 저장 모두 화면에 보이는 편집 내용이 아니라 정식 지도안 양식으로 바로 파일이 내려받아져요(한글은 .hwpx).</p>
       <div className="lesson-print-root"><article className="lp-sheet">
         <header className="lp-header"><h1>{result.title}</h1><p>국어과 교수·학습 과정안</p></header>
         <table className="lp-meta-table"><tbody>
