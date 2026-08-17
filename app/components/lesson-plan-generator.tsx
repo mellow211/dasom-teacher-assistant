@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertCircle, Check, ClipboardList, Copy, LoaderCircle, RefreshCw, Sparkles } from "lucide-react";
+import { AlertCircle, Check, ClipboardList, Copy, FileDown, FileText, LoaderCircle, Printer, RefreshCw, Sparkles } from "lucide-react";
 import { FieldError } from "./generator-result";
-import { formatLessonPlanText, SEMESTERS, STUDENT_LEVELS, validateLessonPlanInput, type LessonPlanData, type LessonPlanErrors, type LessonPlanSelection } from "../lib/lesson-plan-generator";
+import { buildLessonPlanRtf, formatLessonPlanText, SEMESTERS, STUDENT_LEVELS, validateLessonPlanInput, type LessonPlanData, type LessonPlanErrors, type LessonPlanSelection } from "../lib/lesson-plan-generator";
 import { LESSON_TYPES } from "../lib/lesson-plan-reference";
 import { curriculumTopics, curriculumUnits, findCurriculumSession, formatStandards, type CurriculumSemester } from "../lib/korean-curriculum-1";
 
@@ -31,6 +31,8 @@ export function LessonPlanGenerator() {
   const setCriterion=(key:keyof LessonPlanData["assessment"]["criteria"],value:string)=>setResult(c=>c?{...c,assessment:{...c.assessment,criteria:{...c.assessment.criteria,[key]:value}}}:c);
   const setSupport=(index:number,value:string)=>setResult(c=>{if(!c)return c;const levelSupport=[...c.levelSupport];levelSupport[index]={...levelSupport[index],support:lines(value)};return{...c,levelSupport};});
   const copyAll=async()=>{if(!result)return;const out=formatLessonPlanText(result);try{await navigator.clipboard.writeText(out);setCopied(true);window.setTimeout(()=>setCopied(false),2000);}catch{setApiError("복사하지 못했습니다. 각 내용을 직접 선택해 복사해 주세요.");}};
+  const printDoc=()=>{if(!result)return;document.documentElement.dataset.lpPrint="1";window.addEventListener("afterprint",()=>{delete document.documentElement.dataset.lpPrint;},{once:true});window.print();};
+  const downloadHwp=()=>{if(!result)return;const rtf=buildLessonPlanRtf(result,form.durationMinutes);const blob=new Blob([rtf],{type:"application/rtf"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`${(result.title||"지도안").replace(/[\\/:*?"<>|]/g,"")}.rtf`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);};
 
   return <><div className="page-title message-page-title"><div><span className="eyebrow">LESSON PLAN ASSISTANT · 1학년 국어</span><h1>1학년 국어 지도안 생성기</h1><p>참고자료의 수업 설계 원리에 따라 목표·활동·평가가 연결된 지도안을 작성해 드려요.</p></div><span className="privacy-note"><Check size={15}/> 생성 결과만 계정에 저장</span></div>
   <div className="lesson-plan-layout"><section className="form-panel message-form lesson-plan-form"><div className="panel-head"><div><span className="eyebrow">STEP 1</span><h3>기본 수업 정보</h3></div><span className="required">* 필수 항목</span></div>
@@ -55,7 +57,40 @@ export function LessonPlanGenerator() {
       <LessonSection title="4. 수업 흐름"><div className="lesson-stage-table"><div className="stage-header"><span>단계·시간</span><span>학습 내용</span><span>교사 활동</span><span>학생 활동</span><span>자료 및 유의점</span></div>{result.lessonStages.map((s,i)=><div className="stage-row" key={s.stage}><div className="stage-name"><b>{s.stage}</b><label><input type="number" min="1" value={s.minutes} onChange={e=>setStage(i,"minutes",Number(e.target.value))}/>분</label></div><label data-label="학습 내용"><textarea value={s.learningContent} onChange={e=>setStage(i,"learningContent",e.target.value)}/></label><label data-label="교사 활동"><textarea value={text(s.teacherActivities)} onChange={e=>setStage(i,"teacherActivities",e.target.value)}/></label><label data-label="학생 활동"><textarea value={text(s.studentActivities)} onChange={e=>setStage(i,"studentActivities",e.target.value)}/></label><label data-label="자료 및 유의점"><textarea value={text(s.materialsAndNotes)} onChange={e=>setStage(i,"materialsAndNotes",e.target.value)}/></label></div>)}</div><p className="time-total">현재 배정 시간 합계: <b>{result.lessonStages.reduce((a,b)=>a+b.minutes,0)}분</b> · 입력 수업 시간: {form.durationMinutes}분</p></LessonSection>
       <LessonSection title="5. 평가 계획"><div className="assessment-grid">{(["content","method","observableBehaviors"] as const).map(key=><label key={key}><span>{{content:"평가 내용",method:"평가 방법",observableBehaviors:"관찰할 학생 행동"}[key]}</span><textarea value={text(result.assessment[key])} onChange={e=>setAssessment(key,e.target.value)}/></label>)}</div><div className="criteria-grid">{(["high","medium","low"] as const).map(key=><label key={key}><span>{{high:"상",medium:"중",low:"하"}[key]} 기준</span><textarea value={result.assessment.criteria[key]} onChange={e=>setCriterion(key,e.target.value)}/></label>)}</div><label className="alignment-editor"><span>목표·활동·평가 연결 근거</span><textarea value={result.assessment.alignmentEvidence} onChange={e=>setResult(c=>c?{...c,assessment:{...c.assessment,alignmentEvidence:e.target.value}}:c)}/></label></LessonSection>
       <LessonSection title="6. 수준별 지원"><div className="support-grid">{result.levelSupport.map((s,i)=><label key={s.level}><span className={`level-badge level-${s.level}`}>{s.level}</span><textarea value={text(s.support)} onChange={e=>setSupport(i,e.target.value)}/></label>)}</div></LessonSection>
-      <p className="edit-hint">수업 전에 학급 상황에 맞게 시간과 활동 내용을 검토해 주세요.</p><div className="preview-actions message-actions"><button className="ghost-btn" onClick={copyAll}>{copied?<><Check size={16}/> 복사 완료</>:<><Copy size={16}/> 전체 내용 복사</>}</button><button className="primary-btn" onClick={generate} disabled={isLoading}>{isLoading?<LoaderCircle className="spin" size={16}/>:<RefreshCw size={16}/>} 다시 생성</button></div>
+      <p className="edit-hint">수업 전에 학급 상황에 맞게 시간과 활동 내용을 검토해 주세요.</p>
+      <div className="preview-actions message-actions"><button className="ghost-btn" onClick={copyAll}>{copied?<><Check size={16}/> 복사 완료</>:<><Copy size={16}/> 전체 내용 복사</>}</button><button className="ghost-btn" onClick={printDoc}><Printer size={16}/> 인쇄</button><button className="ghost-btn" onClick={printDoc}><FileDown size={16}/> PDF로 저장</button><button className="ghost-btn" onClick={downloadHwp}><FileText size={16}/> 한글로 저장</button><button className="primary-btn" onClick={generate} disabled={isLoading}>{isLoading?<LoaderCircle className="spin" size={16}/>:<RefreshCw size={16}/>} 다시 생성</button></div>
+      <p className="edit-hint lp-export-hint">PDF로 저장은 인쇄 대화상자에서 프린터로 &ldquo;PDF로 저장&rdquo;을 선택하면 되고, 한글로 저장은 한글(HWP)에서 바로 열리는 문서(.rtf)로 내려받아요.</p>
+      <div className="lesson-print-root"><article className="lp-sheet">
+        <header className="lp-header"><h1>{result.title}</h1><p>국어과 교수·학습 과정안</p></header>
+        <table className="lp-meta-table"><tbody>
+          <tr><th>학년·교과</th><td>{result.overview.grade} {result.overview.subject}</td><th>차시</th><td>{result.overview.session}</td></tr>
+          <tr><th>단원</th><td colSpan={3}>{result.overview.unit}</td></tr>
+          <tr><th>차시 주제</th><td colSpan={3}>{result.overview.topic}</td></tr>
+          <tr><th>교과서</th><td>{result.overview.textbook}</td><th>수업 시간</th><td>{form.durationMinutes}분</td></tr>
+          <tr><th>성취기준</th><td colSpan={3}>{result.overview.achievementStandard}</td></tr>
+        </tbody></table>
+        <section className="lp-block"><h2>학습 목표</h2><ul>{result.learningObjectives.map((x,i)=><li key={i}>{x}</li>)}</ul></section>
+        <section className="lp-block"><h2>준비물</h2><p><b>교사</b>{result.teacherMaterials.join(", ")}</p><p><b>학생</b>{result.studentMaterials.join(", ")}</p></section>
+        <section className="lp-block"><h2>수업 흐름</h2>
+          <table className="lp-flow-table">
+            <thead><tr><th>단계<br/>(시간)</th><th>학습 내용</th><th>교수·학습 활동</th><th>자료 및 유의점</th></tr></thead>
+            <tbody>{result.lessonStages.map(s=><tr key={s.stage}><td className="lp-stage-cell"><b>{s.stage}</b><span>({s.minutes}분)</span></td><td>{s.learningContent}</td><td className="lp-activity-cell">{s.teacherActivities.map((a,i)=><p key={`t${i}`}>{a}</p>)}{s.studentActivities.map((a,i)=><p key={`s${i}`}>{a}</p>)}</td><td>{s.materialsAndNotes.map((a,i)=><p key={i}>{a}</p>)}</td></tr>)}</tbody>
+          </table>
+          <p className="lp-time-total">총 수업 시간: {result.lessonStages.reduce((a,b)=>a+b.minutes,0)}분</p>
+        </section>
+        <section className="lp-block"><h2>평가 계획</h2>
+          <table className="lp-eval-table"><tbody>
+            <tr><th>평가 내용</th><td colSpan={3}>{result.assessment.content.join(", ")}</td></tr>
+            <tr><th>평가 방법</th><td colSpan={3}>{result.assessment.method.join(", ")}</td></tr>
+            <tr><th>관찰 행동</th><td colSpan={3}>{result.assessment.observableBehaviors.join(", ")}</td></tr>
+            <tr><th rowSpan={3}>평가 기준</th><td>상</td><td colSpan={2}>{result.assessment.criteria.high}</td></tr>
+            <tr><td>중</td><td colSpan={2}>{result.assessment.criteria.medium}</td></tr>
+            <tr><td>하</td><td colSpan={2}>{result.assessment.criteria.low}</td></tr>
+          </tbody></table>
+        </section>
+        <section className="lp-block"><h2>수준별 지원</h2><div className="lp-support-grid">{result.levelSupport.map(s=><p key={s.level}><b className={`level-badge level-${s.level}`}>{s.level}</b>{s.support.join(", ")}</p>)}</div></section>
+        <footer className="lp-footer"><p>작성일: {new Date().toLocaleDateString("ko-KR")}</p></footer>
+      </article></div>
     </div>}
   </section></div></>;
 }
