@@ -7,7 +7,7 @@ import {
   CircleHelp, Clock3, FileText, FolderOpen, Grid2X2, Heart,
   Home, LayoutTemplate, LoaderCircle, Menu, MessageCircleMore, MoreHorizontal, Plus, Search,
   Sparkles, Star, Users, X, Check, Save, SlidersHorizontal,
-  ClipboardCheck, ChartNoAxesColumnIncreasing, UserRound, UserRoundCog, PenLine, Calculator
+  ClipboardCheck, ChartNoAxesColumnIncreasing, UserRound, UserRoundCog, Calculator
 } from "lucide-react";
 import { MessageGenerator } from "./message-generator";
 import { NewsletterGenerator } from "./newsletter-generator";
@@ -62,7 +62,6 @@ const lessonTools: Tool[] = [
 ];
 
 lessonTools.push({ title: "일일수학 연산학습지", desc: "학년과 수준에 맞는 연산 문제와 정답지를 인쇄", category: "수학", icon: Calculator, color: "mint", badge: "NEW" });
-lessonTools.push({ title: "일일영어", desc: "확인한 단어와 문장으로 영어 문제지와 정답지를 인쇄", category: "영어", icon: PenLine, color: "purple", badge: "NEW" });
 lessonTools.push({ title: "역사 퀴즈", desc: "일반 역사 또는 선택한 교과서 PDF 범위로 혼자 풀기", category: "통합", icon: BookOpen, color: "orange", badge: "NEW" });
 
 type RecentItem = { id: string; title: string; toolLabel: string; route: string; updatedAt: string; kind: "template" | "message" | "result"; isFavorite?: boolean };
