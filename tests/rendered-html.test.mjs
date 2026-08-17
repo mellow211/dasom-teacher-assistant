@@ -315,16 +315,22 @@ test.skip("renders the lesson plan generator route after authentication", async 
   assert.match(html, /민감한 개인정보는 입력하지 마세요/);
 });
 
-test("validates lesson sessions and positive duration", async () => {
+test("validates lesson plan selection against the curriculum and positive duration", async () => {
   const { validateLessonPlanInput } = await import("../app/lib/lesson-plan-generator.ts");
-  const base = { grade:"6학년", subject:"수학", semester:"1학기", unit:"받침이 있는 글자", topic:"받침이 있는 낱말 읽기", achievementStandard:"[1국02-01] 글자와 낱말을 소리 내어 읽는다.", currentSession:3, totalSessions:2, durationMinutes:0, studentLevel:"보통", lessonType:"기능 연습형" };
+  const base = { grade:"6학년", subject:"수학", semester:"1학기", unit:"2. 받침이 있는 글자를 읽어요", topic:"받침이 있는 글자 읽기 (1)", durationMinutes:0, studentLevel:"보통", lessonType:"기능 연습형" };
   const validation = validateLessonPlanInput(base);
   assert.equal(validation.data, undefined);
-  assert.match(validation.errors.currentSession, /전체 차시보다 클 수 없어요/);
   assert.match(validation.errors.durationMinutes, /1분 이상의 정수/);
-  const fixed = validateLessonPlanInput({ ...base, currentSession:1, durationMinutes:40 });
+  const badTopic = validateLessonPlanInput({ ...base, durationMinutes:40, topic:"존재하지 않는 차시" });
+  assert.equal(badTopic.data, undefined);
+  assert.match(badTopic.errors.topic, /다시 선택해 주세요/);
+  const fixed = validateLessonPlanInput({ ...base, durationMinutes:40 });
   assert.equal(fixed.data.grade, "1학년");
   assert.equal(fixed.data.subject, "국어");
+  assert.equal(fixed.data.currentSession, 5);
+  assert.equal(fixed.data.totalSessions, 13);
+  assert.equal(fixed.data.textbookName, "미래엔 초등 국어 1-1");
+  assert.match(fixed.data.achievementStandard, /\[2국04-01\]/);
 });
 
 test("validates lesson plan structure, stage order, time sum, and mixed-level support", async () => {
@@ -365,7 +371,7 @@ test("uses structured AI output and keeps lesson data out of logs", async () => 
   assert.match(service, /JSON\.parse/);
   assert.doesNotMatch(service + route, /console\.(log|info|debug)/);
   assert.match(rules, /시간 합계는 정확히/);
-  assert.match(rules, /입력 성취기준과 단원명을 바꾸지 마세요/);
+  assert.match(rules, /입력된 학기·단원·차시 주제·성취기준·차시·교과서 정보를 바꾸지 마세요/);
   assert.match(rules, /teacherActivities와 studentActivities는 같은 개수/);
   assert.match(rules, /criteria의 high·medium·low/);
   assert.match(reference, /구조와 설계 논리만 활용/);

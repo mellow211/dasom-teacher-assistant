@@ -1,22 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { AlertCircle, Check, ClipboardList, Copy, LoaderCircle, RefreshCw, Sparkles } from "lucide-react";
 import { FieldError } from "./generator-result";
-import { formatLessonPlanText, SEMESTERS, STUDENT_LEVELS, validateLessonPlanInput, type LessonPlanData, type LessonPlanErrors, type LessonPlanInput } from "../lib/lesson-plan-generator";
+import { formatLessonPlanText, SEMESTERS, STUDENT_LEVELS, validateLessonPlanInput, type LessonPlanData, type LessonPlanErrors, type LessonPlanSelection } from "../lib/lesson-plan-generator";
 import { LESSON_TYPES } from "../lib/lesson-plan-reference";
+import { curriculumTopics, curriculumUnits, findCurriculumSession, formatStandards, type CurriculumSemester } from "../lib/korean-curriculum-1";
 
 type Overview = { grade:string; subject:string; semester:string; unit:string; topic:string; session:string; textbook:string; achievementStandard:string };
 type Result = LessonPlanData & { overview: Overview };
-const initialForm: LessonPlanInput = { grade:"1학년", subject:"국어", semester:"1학기", unit:"", topic:"", achievementStandard:"", currentSession:1, totalSessions:1, durationMinutes:40, studentLevel:"수준 혼합", lessonType:"자동 선택", textbookName:"", textbookPages:"", coreContent:"", classCharacteristics:"", desiredActivities:"", availableMaterials:"", additionalRequests:"" };
+const initialForm: LessonPlanSelection = { grade:"1학년", subject:"국어", semester:"1학기", unit:"", topic:"", durationMinutes:40, studentLevel:"수준 혼합", lessonType:"자동 선택", additionalRequests:"" };
 
 const lines = (value:string) => value.split("\n").map(x=>x.trim()).filter(Boolean);
 const text = (value:string[]) => value.join("\n");
 
 export function LessonPlanGenerator() {
-  const [form,setForm]=useState<LessonPlanInput>(initialForm); const [errors,setErrors]=useState<LessonPlanErrors>({});
+  const [form,setForm]=useState<LessonPlanSelection>(initialForm); const [errors,setErrors]=useState<LessonPlanErrors>({});
   const [result,setResult]=useState<Result|null>(null); const [isLoading,setIsLoading]=useState(false); const [apiError,setApiError]=useState(""); const [copied,setCopied]=useState(false); const [saveNotice,setSaveNotice]=useState("");
-  const update=<K extends keyof LessonPlanInput>(key:K,value:LessonPlanInput[K])=>{setForm(c=>({...c,[key]:value}));setErrors(c=>({...c,[key]:undefined}));};
+  const update=<K extends keyof LessonPlanSelection>(key:K,value:LessonPlanSelection[K])=>{setForm(c=>({...c,[key]:value}));setErrors(c=>({...c,[key]:undefined}));};
+  const units=useMemo(()=>curriculumUnits(form.semester),[form.semester]);
+  const topics=useMemo(()=>form.unit?curriculumTopics(form.semester,form.unit):[],[form.semester,form.unit]);
+  const session=useMemo(()=>form.unit&&form.topic?findCurriculumSession(form.semester,form.unit,form.topic):undefined,[form.semester,form.unit,form.topic]);
+  const changeSemester=(semester:CurriculumSemester)=>{setForm(c=>({...c,semester,unit:"",topic:""}));setErrors(c=>({...c,semester:undefined,unit:undefined,topic:undefined}));};
+  const changeUnit=(unit:string)=>{setForm(c=>({...c,unit,topic:""}));setErrors(c=>({...c,unit:undefined,topic:undefined}));};
   const generate=async()=>{const v=validateLessonPlanInput(form);setErrors(v.errors);setApiError("");setCopied(false);setSaveNotice("");if(!v.data)return;setIsLoading(true);try{const response=await fetch("/api/lesson-plans/generate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(v.data)});const payload=await response.json() as {plan?:LessonPlanData;overview?:Overview;error?:string;fields?:LessonPlanErrors};if(!response.ok||!payload.plan||!payload.overview){if(payload.fields)setErrors(payload.fields);throw new Error(payload.error||"지도안을 생성하지 못했습니다.");}const full={...payload.plan,overview:payload.overview};setResult(full);fetch("/api/generated-results",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tool:"lesson-plan",title:full.title,content:formatLessonPlanText(full)})}).then(r=>setSaveNotice(r.ok?"생성 결과를 내 계정에 저장했어요.":"결과는 만들어졌지만 저장에는 실패했어요. 필요하면 복사해 두세요.")).catch(()=>setSaveNotice("결과는 만들어졌지만 저장에는 실패했어요. 필요하면 복사해 두세요."));}catch(error){setApiError(error instanceof Error?error.message:"지도안을 생성하지 못했습니다. 잠시 후 다시 시도해 주세요.");}finally{setIsLoading(false);}};
   const setOverview=(key:keyof Overview,value:string)=>setResult(c=>c?{...c,overview:{...c.overview,[key]:value}}:c);
   const setArray=(key:"learningObjectives"|"teacherMaterials"|"studentMaterials",value:string)=>setResult(c=>c?{...c,[key]:lines(value)}:c);
@@ -29,18 +35,14 @@ export function LessonPlanGenerator() {
   return <><div className="page-title message-page-title"><div><span className="eyebrow">LESSON PLAN ASSISTANT · 1학년 국어</span><h1>1학년 국어 지도안 생성기</h1><p>참고자료의 수업 설계 원리에 따라 목표·활동·평가가 연결된 지도안을 작성해 드려요.</p></div><span className="privacy-note"><Check size={15}/> 생성 결과만 계정에 저장</span></div>
   <div className="lesson-plan-layout"><section className="form-panel message-form lesson-plan-form"><div className="panel-head"><div><span className="eyebrow">STEP 1</span><h3>기본 수업 정보</h3></div><span className="required">* 필수 항목</span></div>
     <div className="kw-fixed"><b>초등학교</b><b>1학년</b><b>국어</b></div>
-    <div className="field-row"><label>학기 *<select value={form.semester} onChange={e=>update("semester",e.target.value as LessonPlanInput["semester"])}>{SEMESTERS.map(x=><option key={x}>{x}</option>)}</select><FieldError message={errors.semester}/></label><label>수업 유형 *<select value={form.lessonType} onChange={e=>update("lessonType",e.target.value as LessonPlanInput["lessonType"])}>{LESSON_TYPES.map(x=><option key={x}>{x}</option>)}</select><FieldError message={errors.lessonType}/></label></div>
-    <label>단원명 *<input value={form.unit} placeholder="예: 2. 받침이 있는 글자를 읽어요" onChange={e=>update("unit",e.target.value)}/><FieldError message={errors.unit}/></label>
-    <label>차시 주제 *<input value={form.topic} placeholder="예: 받침이 있는 글자의 짜임 알아보기" onChange={e=>update("topic",e.target.value)}/><FieldError message={errors.topic}/></label>
-    <label>성취기준 *<small className="field-help">교육과정에 제시된 문구를 그대로 입력해 주세요.</small><textarea value={form.achievementStandard} placeholder="성취기준 코드와 문구를 그대로 입력해 주세요." onChange={e=>update("achievementStandard",e.target.value)}/><FieldError message={errors.achievementStandard}/></label>
-    <div className="field-row lesson-numbers"><label>현재 차시 *<input type="number" min="1" step="1" value={form.currentSession} onChange={e=>update("currentSession",Number(e.target.value))}/><FieldError message={errors.currentSession}/></label><label>전체 차시 *<input type="number" min="1" step="1" value={form.totalSessions} onChange={e=>update("totalSessions",Number(e.target.value))}/><FieldError message={errors.totalSessions}/></label></div>
-    <label>수업 시간(분) *<input type="number" min="1" step="1" value={form.durationMinutes} onChange={e=>update("durationMinutes",Number(e.target.value))}/><FieldError message={errors.durationMinutes}/></label><div className="field-row"><label>교과서명 <span className="optional">선택</span><input value={form.textbookName||""} placeholder="입력한 경우에만 결과에 사용" onChange={e=>update("textbookName",e.target.value)}/></label><label>교과서 쪽수 <span className="optional">선택</span><input value={form.textbookPages||""} placeholder="예: 20~23쪽" onChange={e=>update("textbookPages",e.target.value)}/></label></div>
+    <div className="field-row"><label>학기 *<select value={form.semester} onChange={e=>changeSemester(e.target.value as CurriculumSemester)}>{SEMESTERS.map(x=><option key={x}>{x}</option>)}</select><FieldError message={errors.semester}/></label><label>수업 유형 *<select value={form.lessonType} onChange={e=>update("lessonType",e.target.value as LessonPlanSelection["lessonType"])}>{LESSON_TYPES.map(x=><option key={x}>{x}</option>)}</select><FieldError message={errors.lessonType}/></label></div>
+    <label>단원 *<select value={form.unit} onChange={e=>changeUnit(e.target.value)}><option value="">단원을 선택하세요</option>{units.map(u=><option key={u.unit} value={u.unit}>{u.unit} ({u.totalSessions}차시)</option>)}</select><FieldError message={errors.unit}/></label>
+    <label>차시 주제 *<select value={form.topic} onChange={e=>update("topic",e.target.value)} disabled={!form.unit}><option value="">차시 주제를 선택하세요</option>{topics.map(t=><option key={t.topic} value={t.topic}>{t.currentSession}차시 · {t.topic}</option>)}</select><FieldError message={errors.topic}/></label>
+    {session&&<div className="lesson-auto-info"><div><span>차시</span><b>{session.currentSession}/{session.totalSessions}차시</b></div><div><span>교과서</span><b>{session.textbookName} · {session.textbookPages}쪽</b></div><div className="lesson-auto-standards"><span>성취기준</span><b>{formatStandards(session.standardCodes)}</b></div></div>}
+    <label>수업 시간(분) *<input type="number" min="1" step="1" value={form.durationMinutes} onChange={e=>update("durationMinutes",Number(e.target.value))}/><FieldError message={errors.durationMinutes}/></label>
     <fieldset><legend>학생 수준 *</legend><div className="choice-grid four">{STUDENT_LEVELS.map(x=><button type="button" key={x} className={form.studentLevel===x?"choice active":"choice"} onClick={()=>update("studentLevel",x)}>{x}</button>)}</div><FieldError message={errors.studentLevel}/></fieldset>
     <div className="divider"/><div className="panel-head option-head"><div><span className="eyebrow">STEP 2</span><h3>추가 수업 정보</h3></div></div>
-    <label>이번 차시의 핵심 내용 <span className="optional">선택</span><textarea value={form.coreContent} placeholder="이번 시간에 학생들이 꼭 이해하거나 할 수 있어야 하는 내용을 적어 주세요." onChange={e=>update("coreContent",e.target.value)}/></label>
-    <label>학급 또는 학생의 특성 <span className="optional">선택</span><small className="field-help privacy-warning">학생 실명, 건강 정보 등 민감한 개인정보는 입력하지 마세요.</small><textarea value={form.classCharacteristics} placeholder="예: 발표 참여도에 차이가 크고 모둠 활동 경험이 적음" onChange={e=>update("classCharacteristics",e.target.value)}/></label>
-    <label>포함하고 싶은 활동 <span className="optional">선택</span><textarea value={form.desiredActivities} placeholder="예: 짝 토의, 생각 그물 만들기" onChange={e=>update("desiredActivities",e.target.value)}/></label>
-    <label>사용 가능한 준비물이나 자료 <span className="optional">선택</span><textarea value={form.availableMaterials} placeholder="예: 포스트잇, 색연필, 모둠별 도화지" onChange={e=>update("availableMaterials",e.target.value)}/></label>
+    <small className="field-help">이번 차시의 핵심 내용, 학급 특성, 활동, 준비물은 선택한 차시 주제와 성취기준을 바탕으로 AI가 알아서 구성합니다. 꼭 반영해야 할 요청이 있을 때만 아래에 적어 주세요.</small>
     <label>교사의 추가 요청 <span className="optional">선택</span><textarea value={form.additionalRequests} placeholder="예: 전개 단계에서 개별 활동 시간을 충분히 확보해 주세요." onChange={e=>update("additionalRequests",e.target.value)}/></label>
     <button type="button" className="primary-btn generate-message" onClick={generate} disabled={isLoading}>{isLoading?<><LoaderCircle className="spin" size={17}/> 지도안을 작성하고 있어요</>:<><Sparkles size={17}/> 지도안 생성</>}</button>
   </section>
