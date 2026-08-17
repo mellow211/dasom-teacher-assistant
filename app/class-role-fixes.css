@@ -2,8 +2,10 @@
 .role-page button{transition:background-color .18s ease,border-color .18s ease,color .18s ease,transform .18s ease}
 .role-page button:not(:disabled){cursor:pointer}
 .role-page button:not(:disabled):hover{transform:translateY(-1px)}
-.role-form>button{font-weight:700}
+.role-form>button{font-weight:700;font-size:14px}
 .role-form>button:not(:disabled):hover{background:#2452bd}
+.result-cycle-picker{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:700;color:#4b5c74;margin-top:6px}
+.result-cycle-picker select{border:1px solid #d4e0eb;border-radius:8px;padding:5px 8px;font-size:14px;font-weight:600;background:#fff;color:#1c3553}
 .pref-row select[multiple]{height:88px;padding:4px}
 .pref-row select[multiple] option{padding:6px;border-radius:5px}
 .pref-row select[multiple] option:checked{background:#dceeff;color:#185f9e;font-weight:700}
