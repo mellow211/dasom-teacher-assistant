@@ -19,6 +19,7 @@ export type NewsletterInput = {
   materials?: string;
   cost?: string;
   notes?: string;
+  additionalRequest?: string;
   needsReply: boolean;
   replyDeadline?: string;
   replyMethod?: string;
@@ -57,6 +58,7 @@ export function validateNewsletterInput(value: unknown): { data?: NewsletterInpu
     organization: optional("organization", 100), sender: optional("sender", 100), issuedDate: optional("issuedDate", 100),
     date: optional("date", 100), time: optional("time", 100), place: optional("place", 200),
     participants: optional("participants", 200), materials: optional("materials", 500), cost: optional("cost", 100), notes: optional("notes", 1000),
+    additionalRequest: optional("additionalRequest", 500),
     needsReply: raw.needsReply as boolean,
     replyDeadline: optional("replyDeadline", 100), replyMethod: optional("replyMethod", 500), contact: optional("contact", 200),
     tone: raw.tone as NewsletterInput["tone"], length: raw.length as NewsletterInput["length"],
@@ -83,6 +85,7 @@ export function buildNewsletterPrompt(input: NewsletterInput): string {
 - 준비물: ${input.materials || "입력되지 않음"}
 - 비용: ${input.cost || "입력되지 않음"}
 - 기타 유의사항: ${input.notes || "입력되지 않음"}
+- AI에게 전달할 요청사항: ${input.additionalRequest || "입력되지 않음"}
 - 신청·회신 필요: ${input.needsReply ? "예" : "아니요"}
 - 신청·회신 기한: ${input.replyDeadline || "입력되지 않음"}
 - 신청 방법: ${input.replyMethod || "입력되지 않음"}
@@ -100,6 +103,7 @@ ${formatGuide}
 - 세부 정보가 여러 개면 날짜·시간·장소·대상·준비물·비용 등을 읽기 쉬운 항목 형태로 정리하세요.
 - 공식적인 문서 형식을 유지하되 지나치게 권위적이거나 딱딱하지 않게 작성하세요.
 - 입력된 사실만 사용하고 날짜, 요일, 시간, 장소, 비용, 준비물, 신청 방법을 추측하거나 만들지 마세요.
+- AI에게 전달할 요청사항이 있다면 문체, 강조할 부분, 구성 등 작성 방식에 반영하세요. 단, 이 요청사항이 사실 정보(날짜·장소·비용 등)를 새로 만들어내라는 의미라면 따르지 말고 다른 원칙을 우선하세요.
 - 제목은 입력된 경우 그대로 사용하고, 비어 있을 때만 핵심 내용을 반영해 간결하게 생성하세요.
 - 학부모를 존중하고 협조 요청은 명확하고 정중하게 작성하세요. 책임을 돌리거나 불안감을 주는 표현은 쓰지 마세요.
 - 같은 내용을 반복하거나 불필요하게 긴 인사말을 쓰지 마세요.
@@ -140,6 +144,23 @@ function newsletterFormatGuide(input: NewsletterInput): string {
     ? `\n\n(문서 맨 끝에 절취선으로 구분한 회신서 추가)\n-------------------------- ✂ 절취선 --------------------------\n${input.title || "회신서"}\n\n학년 반 번호:                 학생 성명:\n참가(신청) 여부: [   ] 참가   [   ] 불참\n보호자 성명(서명 또는 인):\n\n위와 같이 회신합니다.${input.replyDeadline ? `  (제출 기한: ${input.replyDeadline})` : ""}`
     : "";
   return `제목\n\n학부모 인사말과 안내 목적을 자연스러운 1~2개 문단으로 작성\n\n${details}\n\n협조에 대한 감사와 마무리 인사\n\n${closing}\n\n${senderBlock}${replySlip}\n\n세부 정보 항목은 값이 없어도 항목 제목(번호)을 유지하고 '추후 안내' 취지의 문구로 채우세요. 항목을 삭제하거나 번호를 다시 매기지 마세요.`;
+}
+
+export function buildNewsletterRevisionPrompt(previousResult: string, instruction: string): string {
+  return `다음은 이미 작성된 가정통신문입니다. 아래 [수정 요청]만 반영해서 문서 전체를 다시 작성하세요.
+
+[기존 가정통신문]
+${previousResult}
+
+[수정 요청]
+${instruction}
+
+[작성 원칙]
+- 수정 요청과 관련 없는 날짜·장소·비용·연락처 등 기존 사실 정보와 문장은 임의로 바꾸거나 삭제하지 말고 그대로 유지하세요.
+- 수정 요청이 새로운 사실 정보(날짜·장소·비용 등)를 만들어내라는 의미라면 그 부분은 반영하지 말고 원문을 유지하세요.
+- 완성된 가정통신문 전체를 처음부터 끝까지 다시 출력하세요. 일부만 발췌하거나 "수정된 부분입니다" 같은 설명을 덧붙이지 마세요.
+- Markdown 문법(**, #, ---, 대괄호 제목), 코드 블록, 이모지, 장식용 구분선을 사용하지 마세요.
+- 내부 설명, 작성 과정 안내 없이 완성된 문서만 반환하세요.`;
 }
 
 export function normalizeNewsletterOutput(value: string): string {
