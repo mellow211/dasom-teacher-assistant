@@ -2,3 +2,12 @@
 @media(max-width:1100px){.writing-layout{grid-template-columns:340px minmax(0,1fr)}}
 @media(max-width:820px){.writing-layout{grid-template-columns:1fr}.writing-form{position:static}}
 @media(max-width:560px){.writing-result{padding:13px}.writing-empty{min-height:340px}.revision-compare,.spelling-row{grid-template-columns:1fr}.revision-compare .feedback-editor:last-child,.spelling-row>.feedback-editor:last-child{grid-column:auto}.spelling-row>span{transform:rotate(90deg);justify-self:center}.student-writing-input{min-height:200px!important}}
+@media print{
+  @page{size:A4 portrait;margin:14mm}
+  body *{visibility:hidden!important}
+  .writing-result,.writing-result *{visibility:visible!important}
+  .writing-result{display:block!important;position:absolute;left:0;top:0;width:100%;border:0;box-shadow:none;margin:0;padding:0}
+  .writing-result .panel-head,.writing-result .api-error,.writing-result .preview-actions{display:none!important}
+  .feedback-card{break-inside:avoid;page-break-inside:avoid}
+  .feedback-editor textarea{border:0;background:transparent;padding:2px 0;resize:none}
+}
