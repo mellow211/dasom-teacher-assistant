@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { buildKoreanWorksheetPrompt,combineWorksheetSets,printableWorksheetIssues,validateKoreanWorksheetInput,validateKoreanWorksheetOutput } from "../app/lib/leveled-korean-worksheet.ts";
 
-const selection={semester:"1학기",unit:"2. 받침이 있는 글자를 읽어요",topic:"받침이 있는 글자 읽기 (1)",areas:["낱말 읽기"],levels:["보충","기본","심화"],itemCount:3,pages:1,composition:"선택형·쓰기 활동 혼합",fontSize:"크게",spacing:"넓게"};
+const selection={semester:"1학기",unit:"2. 받침이 있는 글자를 읽어요",topic:"받침이 있는 글자 읽기 (1)",levels:["보충","기본","심화"],itemCount:3,pages:1,composition:"선택형·쓰기 활동 혼합",fontSize:"크게",spacing:"넓게"};
 const input={...selection,achievementStandard:"[2국04-01] 한글 자모의 이름과 소릿값을 알고 정확하게 발음하고 쓴다.",currentSession:5,totalSessions:13,textbookName:"미래엔 초등 국어 1-1",textbookPages:"154-163"};
 const LEARNING_GOAL="받침이 있는 낱말을 소리 내어 읽을 수 있다.";
 
@@ -17,10 +17,10 @@ function make(level){
   return {title:"받침 낱말 활동",grade:"1학년",subject:"국어",semester:input.semester,unit:input.unit,topic:input.topic,achievementStandard:input.achievementStandard,learningGoal:LEARNING_GOAL,levels:[{level,studentTitle:{보충:"활동지 A",기본:"활동지 B",심화:"활동지 C"}[level],shortDescription:"낱말을 읽고 써 봅니다.",instructions:"문제를 읽고 차례대로 답하세요.",items}],teacherGuide:{commonLearningGoal:LEARNING_GOAL,levelDifferences:[`${level} 도움 방식`],teachingTips:["학생이 낱말을 천천히 읽도록 기다립니다."],answerKey:items.map(x=>({level,itemId:x.id,answer:x.correctAnswer,acceptedAnswers:x.acceptedAnswers,explanation:x.explanation}))}};
 }
 
-test("validates worksheet selection against the curriculum and required areas",()=>{
-  const missingAreas=validateKoreanWorksheetInput({...selection,areas:[]});
-  assert.equal(missingAreas.data,undefined);
-  assert.match(missingAreas.errors.areas,/선택해 주세요/);
+test("validates worksheet selection against the curriculum and required levels",()=>{
+  const missingLevels=validateKoreanWorksheetInput({...selection,levels:[]});
+  assert.equal(missingLevels.data,undefined);
+  assert.match(missingLevels.errors.levels,/선택해 주세요/);
   const badTopic=validateKoreanWorksheetInput({...selection,topic:"존재하지 않는 차시"});
   assert.equal(badTopic.data,undefined);
   assert.match(badTopic.errors.topic,/다시 선택해 주세요/);
