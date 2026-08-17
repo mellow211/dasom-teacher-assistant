@@ -14,6 +14,7 @@ import "./class-student-manager.css";
 import "./survey.css";
 import "./leveled-korean-worksheet.css";
 import "./korean-performance-assessment.css";
+import "./materials.css";
 
 export const metadata: Metadata = {
   title: "다솜쌤 | AI 교사 도우미",

@@ -99,7 +99,7 @@ export function TemplateLibrary() {
   };
 
   return <>
-    <div className="page-title"><div><span className="eyebrow">LIBRARY</span><h1>자료·템플릿 보관함</h1><p>자주 쓰는 내용과 양식을 내 계정에 저장하고, 필요한 순간 다시 꺼내 쓰세요.</p></div><button className="primary-btn" onClick={openNew}><Plus size={17}/> 새 템플릿</button></div>
+    <div className="section-heading compact"><div><h2>문구·양식 템플릿</h2><p>반복해서 쓰는 문구와 서식을 저장해 두고, 복사해서 다른 곳에 바로 붙여 넣으세요.</p></div><button className="primary-btn" onClick={openNew}><Plus size={17}/> 새 템플릿</button></div>
     {notice && <div className="template-notice" role="status"><Check size={16}/>{notice}</div>}
     {error && !showEditor && <div className="template-error" role="alert">{error}<button onClick={()=>setError("")} aria-label="오류 안내 닫기"><X size={15}/></button></div>}
     <div className="library-search"><div className="search-box"><Search size={18}/><input value={query} onChange={event=>setQuery(event.target.value)} placeholder="템플릿 이름이나 내용을 검색하세요" aria-label="템플릿 검색"/></div><select value={grade} onChange={event=>setGrade(event.target.value)}><option>전체 학년</option>{TEMPLATE_GRADES.map(item=><option key={item}>{item}</option>)}</select><select value={subject} onChange={event=>setSubject(event.target.value)}><option>전체 교과</option>{TEMPLATE_SUBJECTS.map(item=><option key={item}>{item}</option>)}</select><select value={type} onChange={event=>setType(event.target.value)}><option>전체 유형</option>{TEMPLATE_TYPES.map(item=><option key={item}>{item}</option>)}</select></div>
