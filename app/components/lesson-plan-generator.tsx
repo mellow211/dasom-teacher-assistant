@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import { AlertCircle, Check, ClipboardList, Copy, FileDown, FileText, LoaderCircle, Printer, RefreshCw, Sparkles } from "lucide-react";
 import { FieldError } from "./generator-result";
-import { buildLessonPlanRtf, formatLessonPlanText, SEMESTERS, STUDENT_LEVELS, validateLessonPlanInput, type LessonPlanData, type LessonPlanErrors, type LessonPlanSelection } from "../lib/lesson-plan-generator";
+import { formatLessonPlanText, SEMESTERS, STUDENT_LEVELS, validateLessonPlanInput, type LessonPlanData, type LessonPlanErrors, type LessonPlanSelection } from "../lib/lesson-plan-generator";
+import { buildLessonPlanHwpx } from "../lib/lesson-plan-hwpx";
 import { LESSON_TYPES } from "../lib/lesson-plan-reference";
 import { curriculumTopics, curriculumUnits, findCurriculumSession, formatStandards, type CurriculumSemester } from "../lib/korean-curriculum-1";
 
@@ -32,7 +33,7 @@ export function LessonPlanGenerator() {
   const setSupport=(index:number,value:string)=>setResult(c=>{if(!c)return c;const levelSupport=[...c.levelSupport];levelSupport[index]={...levelSupport[index],support:lines(value)};return{...c,levelSupport};});
   const copyAll=async()=>{if(!result)return;const out=formatLessonPlanText(result);try{await navigator.clipboard.writeText(out);setCopied(true);window.setTimeout(()=>setCopied(false),2000);}catch{setApiError("복사하지 못했습니다. 각 내용을 직접 선택해 복사해 주세요.");}};
   const printDoc=()=>{if(!result)return;document.documentElement.dataset.lpPrint="1";window.addEventListener("afterprint",()=>{delete document.documentElement.dataset.lpPrint;},{once:true});window.print();};
-  const downloadHwp=()=>{if(!result)return;const rtf=buildLessonPlanRtf(result,form.durationMinutes);const blob=new Blob([rtf],{type:"application/rtf"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`${(result.title||"지도안").replace(/[\\/:*?"<>|]/g,"")}.rtf`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);};
+  const downloadHwp=()=>{if(!result)return;const bytes=buildLessonPlanHwpx(result,form.durationMinutes);const blob=new Blob([bytes.buffer as ArrayBuffer],{type:"application/hwp+zip"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`${(result.title||"지도안").replace(/[\\/:*?"<>|]/g,"")}.hwpx`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);};
 
   return <><div className="page-title message-page-title"><div><span className="eyebrow">LESSON PLAN ASSISTANT · 1학년 국어</span><h1>1학년 국어 지도안 생성기</h1><p>참고자료의 수업 설계 원리에 따라 목표·활동·평가가 연결된 지도안을 작성해 드려요.</p></div><span className="privacy-note"><Check size={15}/> 생성 결과만 계정에 저장</span></div>
   <div className="lesson-plan-layout"><section className="form-panel message-form lesson-plan-form"><div className="panel-head"><div><span className="eyebrow">STEP 1</span><h3>기본 수업 정보</h3></div><span className="required">* 필수 항목</span></div>
@@ -59,7 +60,7 @@ export function LessonPlanGenerator() {
       <LessonSection title="6. 수준별 지원"><div className="support-grid">{result.levelSupport.map((s,i)=><label key={s.level}><span className={`level-badge level-${s.level}`}>{s.level}</span><textarea value={text(s.support)} onChange={e=>setSupport(i,e.target.value)}/></label>)}</div></LessonSection>
       <p className="edit-hint">수업 전에 학급 상황에 맞게 시간과 활동 내용을 검토해 주세요.</p>
       <div className="preview-actions message-actions"><button className="ghost-btn" onClick={copyAll}>{copied?<><Check size={16}/> 복사 완료</>:<><Copy size={16}/> 전체 내용 복사</>}</button><button className="ghost-btn" onClick={printDoc}><Printer size={16}/> 인쇄</button><button className="ghost-btn" onClick={printDoc}><FileDown size={16}/> PDF로 저장</button><button className="ghost-btn" onClick={downloadHwp}><FileText size={16}/> 한글로 저장</button><button className="primary-btn" onClick={generate} disabled={isLoading}>{isLoading?<LoaderCircle className="spin" size={16}/>:<RefreshCw size={16}/>} 다시 생성</button></div>
-      <p className="edit-hint lp-export-hint">PDF로 저장은 인쇄 대화상자에서 프린터로 &ldquo;PDF로 저장&rdquo;을 선택하면 되고, 한글로 저장은 한글(HWP)에서 바로 열리는 문서(.rtf)로 내려받아요.</p>
+      <p className="edit-hint lp-export-hint">PDF로 저장은 인쇄 대화상자에서 프린터로 &ldquo;PDF로 저장&rdquo;을 선택하면 되고, 한글로 저장은 한글(HWP)의 기본 파일 형식(.hwpx)으로 바로 내려받아요.</p>
       <div className="lesson-print-root"><article className="lp-sheet">
         <header className="lp-header"><h1>{result.title}</h1><p>국어과 교수·학습 과정안</p></header>
         <table className="lp-meta-table"><tbody>
