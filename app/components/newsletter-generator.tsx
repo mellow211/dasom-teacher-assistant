@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BookOpenCheck, Check, LoaderCircle, ShieldCheck, Sparkles } from "lucide-react";
 import { FieldError, GeneratorResult } from "./generator-result";
 import {
@@ -14,7 +14,7 @@ const initialForm: NewsletterInput = {
   needsReply: false, replyDeadline: "", replyMethod: "", contact: "", tone: "공식적으로", length: "보통",
 };
 
-export function NewsletterGenerator() {
+export function NewsletterGenerator({ resultId }: { resultId?: string } = {}) {
   const [form, setForm] = useState<NewsletterInput>(initialForm);
   const [errors, setErrors] = useState<NewsletterErrors>({});
   const [result, setResult] = useState("");
@@ -24,6 +24,23 @@ export function NewsletterGenerator() {
   const [revisionInstruction, setRevisionInstruction] = useState("");
   const [isRevising, setIsRevising] = useState(false);
   const [revisionError, setRevisionError] = useState("");
+  const [loadingSaved, setLoadingSaved] = useState(!!resultId);
+
+  useEffect(() => {
+    if (!resultId) return;
+    let active = true;
+    fetch(`/api/generated-results?id=${encodeURIComponent(resultId)}`, { cache: "no-store" })
+      .then((r) => r.ok ? r.json() : null)
+      .then((raw) => {
+        if (!active) return;
+        const payload = raw as { result?: { title: string; content: string } } | null;
+        if (payload?.result) { setResult(payload.result.content); setSaveNotice("저장된 가정통신문을 불러왔어요."); }
+        else setApiError("저장된 가정통신문을 불러오지 못했습니다.");
+      })
+      .catch(() => { if (active) setApiError("저장된 가정통신문을 불러오지 못했습니다."); })
+      .finally(() => { if (active) setLoadingSaved(false); });
+    return () => { active = false; };
+  }, [resultId]);
 
   const scheduleTypes = ["행사 안내", "교육활동 안내", "체험학습 안내", "일정 변경 안내"];
   const materialTypes = ["행사 안내", "교육활동 안내", "체험학습 안내", "준비물 안내"];
@@ -109,6 +126,7 @@ export function NewsletterGenerator() {
       </section>
       <div className="message-output-column">
         {saveNotice && <div className="save-notice"><Check size={15}/>{saveNotice}</div>}
+        {loadingSaved && <p className="recent-list-status"><LoaderCircle className="spin" size={15}/> 저장된 가정통신문을 불러오는 중이에요.</p>}
         <GeneratorResult eyebrow="생성 결과" title="가정통신문 초안" result={result} setResult={setResult} isLoading={isLoading} apiError={apiError} onRegenerate={generate} emptyTitle="아직 생성된 가정통신문이 없어요" emptyDescription={<>왼쪽에서 안내 정보를 입력한 뒤<br/>가정통신문 생성 버튼을 눌러 주세요.</>} editHint="배부하기 전에 날짜, 비용, 연락처 등 세부 정보를 다시 확인해 주세요." resultAriaLabel="생성된 가정통신문 수정"/>
         {result && <section className="form-panel revise-panel"><div className="panel-head"><div><span className="eyebrow">추가 수정</span><h3>요청사항으로 수정하기</h3></div></div><small className="field-help">생성된 내용을 기반으로 원하는 부분만 다시 요청할 수 있어요. 예: "회신 기한을 다음 주 금요일로 바꿔줘", "전체적으로 더 간결하게 줄여줘"</small><textarea value={revisionInstruction} onChange={(e)=>setRevisionInstruction(e.target.value)} maxLength={500} placeholder="어떻게 수정할지 구체적으로 적어 주세요."/><FieldError message={revisionError}/><button type="button" className="primary-btn" onClick={reviseResult} disabled={isRevising||!revisionInstruction.trim()}>{isRevising?<><LoaderCircle className="spin" size={16}/> 수정하고 있어요</>:<><Sparkles size={16}/> 요청 반영해서 수정</>}</button></section>}
       </div>

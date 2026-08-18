@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, Check, ClipboardList, Copy, FileDown, FileText, LoaderCircle, Printer, RefreshCw, Sparkles } from "lucide-react";
 import { FieldError } from "./generator-result";
 import { formatLessonPlanText, SEMESTERS, STUDENT_LEVELS, validateLessonPlanInput, type LessonPlanData, type LessonPlanErrors, type LessonPlanSelection } from "../lib/lesson-plan-generator";
@@ -15,16 +15,32 @@ const initialForm: LessonPlanSelection = { grade:"1학년", subject:"국어", se
 const lines = (value:string) => value.split("\n").map(x=>x.trim()).filter(Boolean);
 const text = (value:string[]) => value.join("\n");
 
-export function LessonPlanGenerator() {
+export function LessonPlanGenerator({ resultId }: { resultId?: string } = {}) {
   const [form,setForm]=useState<LessonPlanSelection>(initialForm); const [errors,setErrors]=useState<LessonPlanErrors>({});
   const [result,setResult]=useState<Result|null>(null); const [isLoading,setIsLoading]=useState(false); const [apiError,setApiError]=useState(""); const [copied,setCopied]=useState(false); const [saveNotice,setSaveNotice]=useState(""); const [pdfLoading,setPdfLoading]=useState(false);
+  const [loadingSaved,setLoadingSaved]=useState(!!resultId);
+  useEffect(()=>{
+    if(!resultId)return;
+    let active=true;
+    fetch(`/api/generated-results?id=${encodeURIComponent(resultId)}`,{cache:"no-store"})
+      .then(r=>r.ok?r.json():null)
+      .then((raw)=>{
+        if(!active)return;
+        const payload=raw as {result?:{data?:unknown}}|null;
+        if(payload?.result?.data){setResult(payload.result.data as Result);setSaveNotice("저장된 지도안을 불러왔어요.");}
+        else setApiError("저장된 지도안을 불러오지 못했습니다.");
+      })
+      .catch(()=>{if(active)setApiError("저장된 지도안을 불러오지 못했습니다.");})
+      .finally(()=>{if(active)setLoadingSaved(false);});
+    return()=>{active=false};
+  },[resultId]);
   const update=<K extends keyof LessonPlanSelection>(key:K,value:LessonPlanSelection[K])=>{setForm(c=>({...c,[key]:value}));setErrors(c=>({...c,[key]:undefined}));};
   const units=useMemo(()=>curriculumUnits(form.semester),[form.semester]);
   const topics=useMemo(()=>form.unit?curriculumTopics(form.semester,form.unit):[],[form.semester,form.unit]);
   const session=useMemo(()=>form.unit&&form.topic?findCurriculumSession(form.semester,form.unit,form.topic):undefined,[form.semester,form.unit,form.topic]);
   const changeSemester=(semester:CurriculumSemester)=>{setForm(c=>({...c,semester,unit:"",topic:""}));setErrors(c=>({...c,semester:undefined,unit:undefined,topic:undefined}));};
   const changeUnit=(unit:string)=>{setForm(c=>({...c,unit,topic:""}));setErrors(c=>({...c,unit:undefined,topic:undefined}));};
-  const generate=async()=>{const v=validateLessonPlanInput(form);setErrors(v.errors);setApiError("");setCopied(false);setSaveNotice("");if(!v.data)return;setIsLoading(true);try{const response=await fetch("/api/lesson-plans/generate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(v.data)});const payload=await response.json() as {plan?:LessonPlanData;overview?:Overview;error?:string;fields?:LessonPlanErrors};if(!response.ok||!payload.plan||!payload.overview){if(payload.fields)setErrors(payload.fields);throw new Error(payload.error||"지도안을 생성하지 못했습니다.");}const full={...payload.plan,overview:payload.overview};setResult(full);fetch("/api/generated-results",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tool:"lesson-plan",title:full.title,content:formatLessonPlanText(full)})}).then(r=>setSaveNotice(r.ok?"생성 결과를 내 계정에 저장했어요.":"결과는 만들어졌지만 저장에는 실패했어요. 필요하면 복사해 두세요.")).catch(()=>setSaveNotice("결과는 만들어졌지만 저장에는 실패했어요. 필요하면 복사해 두세요."));}catch(error){setApiError(error instanceof Error?error.message:"지도안을 생성하지 못했습니다. 잠시 후 다시 시도해 주세요.");}finally{setIsLoading(false);}};
+  const generate=async()=>{const v=validateLessonPlanInput(form);setErrors(v.errors);setApiError("");setCopied(false);setSaveNotice("");if(!v.data)return;setIsLoading(true);try{const response=await fetch("/api/lesson-plans/generate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(v.data)});const payload=await response.json() as {plan?:LessonPlanData;overview?:Overview;error?:string;fields?:LessonPlanErrors};if(!response.ok||!payload.plan||!payload.overview){if(payload.fields)setErrors(payload.fields);throw new Error(payload.error||"지도안을 생성하지 못했습니다.");}const full={...payload.plan,overview:payload.overview};setResult(full);fetch("/api/generated-results",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({tool:"lesson-plan",title:full.title,content:formatLessonPlanText(full),data:full})}).then(r=>setSaveNotice(r.ok?"생성 결과를 내 계정에 저장했어요.":"결과는 만들어졌지만 저장에는 실패했어요. 필요하면 복사해 두세요.")).catch(()=>setSaveNotice("결과는 만들어졌지만 저장에는 실패했어요. 필요하면 복사해 두세요."));}catch(error){setApiError(error instanceof Error?error.message:"지도안을 생성하지 못했습니다. 잠시 후 다시 시도해 주세요.");}finally{setIsLoading(false);}};
   const setOverview=(key:keyof Overview,value:string)=>setResult(c=>c?{...c,overview:{...c.overview,[key]:value}}:c);
   const setArray=(key:"learningObjectives"|"teacherMaterials"|"studentMaterials",value:string)=>setResult(c=>c?{...c,[key]:lines(value)}:c);
   const setStage=(index:number,key:keyof LessonPlanData["lessonStages"][number],value:string|number)=>setResult(c=>{if(!c)return c;const lessonStages=[...c.lessonStages];const arrayKey=key==="teacherActivities"||key==="studentActivities"||key==="materialsAndNotes";lessonStages[index]={...lessonStages[index],[key]:arrayKey&&typeof value==="string"?lines(value):value} as LessonPlanData["lessonStages"][number];return{...c,lessonStages};});
@@ -71,7 +87,7 @@ export function LessonPlanGenerator() {
     <button type="button" className="primary-btn generate-message" onClick={generate} disabled={isLoading}>{isLoading?<><LoaderCircle className="spin" size={17}/> 지도안을 작성하고 있어요</>:<><Sparkles size={17}/> 지도안 생성</>}</button>
   </section>
   <section className="lesson-result" aria-live="polite"><div className="panel-head"><div><span className="eyebrow"><ClipboardList size={13}/> 생성 결과</span><h3>수업 지도안</h3></div>{result&&<span className="result-ready"><Check size={13}/> 항목별 수정 가능</span>}</div>{saveNotice&&<div className="save-notice"><Check size={15}/>{saveNotice}</div>}{apiError&&<div className="api-error"><AlertCircle size={19}/><div><b>지도안을 생성하지 못했어요</b><p>{apiError}</p><span>입력값과 수업 시간을 확인한 뒤 다시 생성해 주세요.</span></div></div>}
-    {!result?<div className="message-empty lesson-empty"><span><ClipboardList size={28}/></span><b>아직 생성된 지도안이 없어요</b><p>왼쪽에서 수업 정보를 입력한 뒤<br/>지도안 생성 버튼을 눌러 주세요.</p><div><span>1</span>수업 정보<span>2</span>AI 생성<span>3</span>항목 수정</div></div>:<div className="lesson-document">
+    {loadingSaved?<p className="recent-list-status"><LoaderCircle className="spin" size={15}/> 저장된 지도안을 불러오는 중이에요.</p>:!result?<div className="message-empty lesson-empty"><span><ClipboardList size={28}/></span><b>아직 생성된 지도안이 없어요</b><p>왼쪽에서 수업 정보를 입력한 뒤<br/>지도안 생성 버튼을 눌러 주세요.</p><div><span>1</span>수업 정보<span>2</span>AI 생성<span>3</span>항목 수정</div></div>:<div className="lesson-document">
       <input className="lesson-title-input" value={result.title} onChange={e=>setResult(c=>c?{...c,title:e.target.value}:c)} aria-label="지도안 제목"/>
       <LessonSection title="1. 수업 개요"><div className="overview-grid">{(["subject","grade","semester","unit","topic","session","textbook","achievementStandard"] as const).map(key=><label key={key}><span>{{subject:"교과",grade:"학년",semester:"학기",unit:"단원",topic:"차시 주제",session:"차시",textbook:"교과서·쪽수",achievementStandard:"성취기준"}[key]}</span><textarea value={result.overview[key]} onChange={e=>setOverview(key,e.target.value)}/></label>)}</div><p className="lesson-type-note">수업 유형: <b>{result.lessonType}</b></p></LessonSection>
       <LessonSection title="2. 학습 목표"><textarea className="section-editor" value={text(result.learningObjectives)} onChange={e=>setArray("learningObjectives",e.target.value)}/></LessonSection>
